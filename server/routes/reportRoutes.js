@@ -87,6 +87,69 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Add these new routes in server/routes/reportRoutes.js
+// IMPORTANT: Place this code BEFORE the router.get('/:id', ...) route
+
+// --- GET report statistics ---
+// GET /api/reports/stats
+// in server/routes/reportRoutes.js
+
+// --- GET report statistics (Improved) ---
+// GET /api/reports/stats
+router.get('/stats', async (req, res) => {
+    try {
+        const total = await Report.count();
+        
+        // Use Op.iLike for case-insensitive matching
+        const pending = await Report.count({
+            where: {
+                status: {
+                    [Op.iLike]: 'Pending'
+                }
+            }
+        });
+
+        const resolved = await Report.count({
+            where: {
+                status: {
+                    [Op.iLike]: 'Resolved'
+                }
+            }
+        });
+        
+        const inProgress = await Report.count({
+            where: {
+                status: {
+                    [Op.iLike]: 'In Progress'
+                }
+            }
+        });
+
+
+        res.json({ total, pending, resolved, inProgress });
+    } catch (error) {
+        console.error('Failed to fetch report stats:', error);
+        res.status(500).json({ error: 'Failed to fetch report stats.' });
+    }
+});
+// --- GET reports grouped by category for the chart ---
+// GET /api/reports/by-category
+router.get('/by-category', async (req, res) => {
+    try {
+        const categoryData = await Report.findAll({
+            attributes: [
+                'category',
+                [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+            ],
+            group: ['category'],
+            order: [[sequelize.fn('COUNT', sequelize.col('id')), 'DESC']]
+        });
+        res.json(categoryData);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch category data.' });
+    }
+});
+
 // GET a single report by ID
 router.get('/:id', async (req, res) => {
     try {
