@@ -4,13 +4,8 @@ import { Container, Row, Col, Card, Image, Button, Form, Badge, Spinner } from '
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import styles from './ReportDetails.module.css';
-
-// Re-using the mock data from the Reports page for this example
-const mockData = [
-  { id: 125, description: 'Huge pothole on Main St. causing traffic issues.', category: 'Pothole', status: 'Pending', createdAt: '2025-09-14T10:00:00Z', imageUrl: 'https://via.placeholder.com/600x400.png?text=Pothole+Report', location: { coordinates: [77.5946, 12.9716] } },
-  { id: 124, description: 'The main bin near the central park is overflowing and has not been cleared for 3 days.', category: 'Garbage', status: 'In Progress', createdAt: '2025-09-13T14:30:00Z', imageUrl: 'https://via.placeholder.com/600x400.png?text=Garbage+Report', location: { coordinates: [77.60, 12.97] } },
-  // ... add other mock items if needed
-];
+import api from '../api/api';
+import { toast } from 'react-toastify';
 
 const StatusBadge = ({ status }) => {
     const variant = { Pending: 'warning', 'In Progress': 'primary', Resolved: 'success' }[status];
@@ -24,27 +19,36 @@ const ReportDetails = () => {
     const [status, setStatus] = useState('');
 
     useEffect(() => {
-        // In a real app, you'd fetch this from the API:
-        // const response = await api.get(`/reports/${id}`);
-        const foundReport = mockData.find(r => r.id.toString() === id);
-        setReport(foundReport);
-        setStatus(foundReport?.status || '');
+        const fetchReport = async () => {
+            try {
+                const response = await api.get(`/reports/${id}`);
+                setReport(response.data);
+                setStatus(response.data.status);
+            } catch (error) {
+                console.error("Failed to fetch report:", error);
+                toast.error("Could not load report details.");
+            }
+        };
+        fetchReport();
     }, [id]);
 
+    // THIS IS THE MISSING FUNCTION
     const handleStatusChange = (e) => setStatus(e.target.value);
 
-    const handleSaveChanges = () => {
-        // In a real app, this would be a PUT request to the API
-        // await api.put(`/reports/${id}`, { status });
-        alert(`Status for report #${id} would be updated to "${status}"`);
-        navigate('/reports');
+    const handleSaveChanges = async () => {
+        try {
+            await api.put(`/reports/${id}`, { status });
+            toast.success(`Report #${id} status updated successfully!`);
+            navigate('/reports');
+        } catch (error) {
+            toast.error("Failed to update report.");
+        }
     };
 
     if (!report) {
         return <Spinner animation="border" />;
     }
     
-    // Leaflet expects [latitude, longitude]
     const position = [report.location.coordinates[1], report.location.coordinates[0]];
 
     return (

@@ -1,5 +1,5 @@
 // File: src/pages/Reports.jsx
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect} from 'react';
 import { Container, Table, Button, Badge, Form } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -9,16 +9,10 @@ import {
   getFilteredRowModel,
   flexRender,
 } from '@tanstack/react-table';
-
+import api from '../api/api'; // Import our api handler
+import { Spinner } from 'react-bootstrap';
 import styles from './Reports.module.css';
 
-// Mock Data - Replace with API later
-const mockData = [
-  { id: 125, description: 'Huge pothole on Main St.', category: 'Pothole', status: 'Pending', createdAt: '2025-09-14T10:00:00Z' },
-  { id: 124, description: 'Overflowing bin near park', category: 'Garbage', status: 'In Progress', createdAt: '2025-09-13T14:30:00Z' },
-  { id: 123, description: 'Streetlight flickering on 5th Ave', category: 'Streetlight', status: 'Resolved', createdAt: '2025-09-12T09:00:00Z' },
-  { id: 122, description: 'Water leakage from pipe', category: 'Water Leak', status: 'Resolved', createdAt: '2025-09-11T18:00:00Z' },
-];
 
 const StatusBadge = ({ status }) => {
   const variant = {
@@ -30,9 +24,10 @@ const StatusBadge = ({ status }) => {
 };
 
 const Reports = () => {
-  const navigate = useNavigate();
-  const data = useMemo(() => mockData, []);
-
+    const navigate = useNavigate();
+    const [reports, setReports] = useState([]); // State for real data
+    const [loading, setLoading] = useState(true);
+  const data = useMemo(() => reports, [reports]);
   const columns = useMemo(
     () => [
       {
@@ -74,6 +69,20 @@ const Reports = () => {
     [navigate]
   );
 
+  useEffect(() => {
+        const fetchReports = async () => {
+            try {
+                const response = await api.get('/reports');
+                setReports(response.data);
+            } catch (error) {
+                console.error("Failed to fetch reports:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchReports();
+    }, []);
+
   // --- Table state ---
   const [globalFilter, setGlobalFilter] = useState('');
 
@@ -86,6 +95,10 @@ const Reports = () => {
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
   });
+
+  if (loading) {
+        return <Spinner animation="border" />;
+    }
 
   return (
     <Container fluid>
