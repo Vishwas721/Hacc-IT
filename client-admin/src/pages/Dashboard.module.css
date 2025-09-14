@@ -1,0 +1,35 @@
+/* File: src/pages/Dashboard.module.css */
+.pageTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+}
+
+.customCard {
+  border: none !important;
+  border-radius: 0.75rem !important;
+  box-shadow: var(--card-shadow) !important;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.customCard:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--card-hover-shadow) !important;
+}
+
+.statCardTitle {
+  color: #6c757d;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.statCardValue {
+  font-size: 2.5rem;
+  font-weight: 700;
+}
+
+.chartCardTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+}

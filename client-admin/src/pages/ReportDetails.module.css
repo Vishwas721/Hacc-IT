@@ -1,0 +1,46 @@
+/* File: src/pages/ReportDetails.module.css */
+.pageHeader {
+  margin-bottom: 2rem;
+}
+
+.backButton {
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+}
+
+.reportImage {
+  width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+  box-shadow: var(--card-shadow);
+  margin-bottom: 1.5rem;
+}
+
+.mapContainer {
+  height: 300px;
+  width: 100%;
+  border-radius: 0.75rem;
+  box-shadow: var(--card-shadow);
+  overflow: hidden; /* Important for border-radius on map */
+}
+
+.detailsCard {
+  border: none !important;
+  border-radius: 0.75rem !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+.detailItem {
+  margin-bottom: 1rem;
+}
+
+.detailLabel {
+  font-weight: 600;
+  color: #6c757d;
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+.detailValue {
+  font-size: 1.1rem;
+}

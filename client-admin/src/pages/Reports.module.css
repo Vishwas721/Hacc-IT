@@ -1,0 +1,34 @@
+/* File: src/pages/Reports.module.css */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.pageTitle {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.table {
+  border-radius: 0.75rem;
+  overflow: hidden; /* Ensures border-radius is applied to the table */
+  box-shadow: var(--card-shadow);
+}
+
+.table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.statusBadge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fff;
+  text-transform: uppercase;
+}
