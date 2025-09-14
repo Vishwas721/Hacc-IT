@@ -10,8 +10,9 @@ import Homepage from './pages/Homepage';
 import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
 import ReportDetails from './pages/ReportDetails';
- 
+import Users from './pages/Users';
 import Departments from './pages/Departments';
+import Settings from './pages/Settings';
 // Import other pages as needed
 
 // A simple layout wrapper
@@ -43,7 +44,8 @@ function App() {
             <Route path="/reports" element={<Reports />} />
             <Route path="/reports/:id" element={<ReportDetails />} />
             <Route path="/departments" element={<Departments />} />
-
+            <Route path="/users" element={<Users />} />
+            <Route path="/settings" element={<Settings />} />
             {/* Add other protected routes here later */}
           </Route>
         </Route>

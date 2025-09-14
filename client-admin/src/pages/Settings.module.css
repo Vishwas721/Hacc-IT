@@ -1,0 +1,15 @@
+/* File: src/pages/Settings.module.css */
+.pageTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  color: var(--page-title-color);
+}
+
+.settingsCard {
+  border: none !important;
+  border-radius: 0.75rem !important;
+  box-shadow: var(--card-shadow) !important;
+  max-width: 600px; /* Give the card a max width */
+  background-color: var(--card-bg);
+}
