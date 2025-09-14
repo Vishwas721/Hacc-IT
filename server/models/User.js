@@ -20,6 +20,11 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       defaultValue: 0,
     },
+    role: {
+      type: DataTypes.STRING,
+      defaultValue: 'staff', // New users are 'staff' by default
+      allowNull: false,
+    },
   });
 
   return User;

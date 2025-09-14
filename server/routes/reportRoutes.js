@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('cloudinary').v2;
-const { Report, User } = require('../db'); // We'll create this db file next
+const { Report, User } = require('../models'); // We'll create this db file next
 
 const router = express.Router();
 

@@ -4,11 +4,23 @@ import { useAuth } from '../context/AuthContext';
 import { Container, Alert } from 'react-bootstrap';
 
 const ProtectedRoute = ({ allowedRoles }) => {
-  const { user, token } = useAuth();
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <Container className="vh-100 d-flex justify-content-center align-items-center">
+        <Spinner animation="border" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </Spinner>
+      </Container>
+    );
+  }
 
-  if (!token) {
+  if (!user) {
+    // Now we check for user object instead of token
     return <Navigate to="/login" replace />;
   }
+
+
 
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
     return (

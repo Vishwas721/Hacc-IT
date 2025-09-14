@@ -3,8 +3,9 @@ const express = require('express');
 const cors = require('cors');
 const { connectAndSync } = require('./db');
 const reportRoutes = require('./routes/reportRoutes');
-
+const authRoutes = require('./routes/authRoutes');
 // --- SETUP ---
+const db = require('./models');
 const app = express();
 app.use(cors());
 app.use(express.json()); // For parsing application/json
@@ -18,7 +19,7 @@ connectAndSync();
 app.get('/', (req, res) => {
     res.json({ message: 'Welcome to the Civic Reporting API!' });
 });
-
+app.use('/api/auth', authRoutes);
 // Use our new report routes
 app.use('/api/reports', reportRoutes);
 
