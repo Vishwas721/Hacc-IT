@@ -10,6 +10,8 @@ import Homepage from './pages/Homepage';
 import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
 import ReportDetails from './pages/ReportDetails';
+ 
+import Departments from './pages/Departments';
 // Import other pages as needed
 
 // A simple layout wrapper
@@ -40,6 +42,8 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/reports/:id" element={<ReportDetails />} />
+            <Route path="/departments" element={<Departments />} />
+
             {/* Add other protected routes here later */}
           </Route>
         </Route>
