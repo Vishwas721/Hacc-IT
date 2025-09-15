@@ -40,6 +40,9 @@ const upload = multer({ storage: storage });
 // in server/routes/reportRoutes.js
 
 // --- POST a new report (Final Version) ---
+// in server/routes/reportRoutes.js
+
+// --- POST a new report (Final Corrected Version) ---
 router.post('/', upload.single('image'), async (req, res) => {
     try {
         const { description, longitude, latitude } = req.body;
@@ -47,12 +50,16 @@ router.post('/', upload.single('image'), async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields or image.' });
         }
 
+        const adminUser = await User.findOne({ where: { role: 'super-admin' } });
+        if (!adminUser) {
+            return res.status(500).json({ error: 'Failed to create report.', details: 'No super-admin user found.' });
+        }
+        
         let category = 'Other';
         let urgency_score = 1;
 
         if (process.env.GEMINI_API_KEY) {
             try {
-                // FIX 1: Use the correct, current model name
                 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
                 const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
@@ -66,30 +73,33 @@ router.post('/', upload.single('image'), async (req, res) => {
                 const responseText = result.response.text();
                 const cleanedText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
                 const aiResponse = JSON.parse(cleanedText);
-
+                
                 category = aiResponse.category || 'Other';
                 urgency_score = aiResponse.urgency_score || 1;
             } catch (aiError) {
                 console.error("AI analysis failed, using default values. AI Error:", aiError.message);
             }
         } else {
-            console.log("GEMINI_API_KEY not found in .env, skipping AI analysis.");
-        }
-        
-        // FIX 2: Find a real admin user to assign the report to
-        const adminUser = await User.findOne({ where: { role: 'super-admin' } });
-        if (!adminUser) {
-            return res.status(500).json({ error: 'No admin user found to assign the report to. Please create a super-admin.' });
+            console.log("GEMINI_API_KEY not found, skipping AI analysis.");
         }
 
+        // THIS IS THE FIX: Define initialHistory here
+        const initialHistory = [{
+            status: 'Submitted',
+            timestamp: new Date(),
+            notes: 'Report received from citizen.',
+        }];
+        
         const location = { type: 'Point', coordinates: [longitude, latitude] };
         const newReport = await Report.create({
             description,
             imageUrl: req.file.path,
             location,
-            UserId: adminUser.id, // Use the real admin's ID
+            UserId: adminUser.id,
             category,
             urgency_score,
+            status: 'Submitted',
+            statusHistory: initialHistory, // Now this variable exists
         });
 
         res.status(201).json(newReport);
@@ -203,10 +213,22 @@ router.put('/:id', async (req, res) => {
         if (!report) {
             return res.status(404).json({ error: 'Report not found.' });
         }
+        
+        // Add a new entry to the history array
+        const newHistoryEntry = {
+            status: status,
+            timestamp: new Date(),
+            notes: `Status updated by admin.` // We can add more detail here later
+        };
+        
+        // IMPORTANT: Update the array and the status field
         report.status = status;
+        report.statusHistory = [...report.statusHistory, newHistoryEntry];
+        
         await report.save();
         res.status(200).json(report);
     } catch (error) {
+        console.error("Error updating report:", error);
         res.status(500).json({ error: 'Failed to update report.' });
     }
 });

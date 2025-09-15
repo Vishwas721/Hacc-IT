@@ -1,8 +1,8 @@
 // File: src/pages/ReportDetails.jsx
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Image, Button, Form, Badge, Spinner } from 'react-bootstrap';
-import { useParams, useNavigate, Link } from 'react-router-dom'; // Import Link
+import { useParams, useNavigate } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import styles from './ReportDetails.module.css';
 import api from '../api/api';
 import { toast } from 'react-toastify';
@@ -19,6 +19,7 @@ const ReportDetails = () => {
     const navigate = useNavigate();
     const [report, setReport] = useState(null);
     const [status, setStatus] = useState('');
+    const [map, setMap] = useState(null);
 
     useEffect(() => {
         const fetchReport = async () => {
@@ -31,6 +32,13 @@ const ReportDetails = () => {
         fetchReport();
     }, [id]);
 
+    useEffect(() => {
+        if (map) {
+            const timer = setTimeout(() => map.invalidateSize(), 100);
+            return () => clearTimeout(timer);
+        }
+    }, [map]);
+
     const handleStatusChange = (e) => setStatus(e.target.value);
     const handleSaveChanges = async () => {
         try {
@@ -42,6 +50,8 @@ const ReportDetails = () => {
     };
 
     if (!report) return <Spinner animation="border" />;
+    
+    const position = [report.location.coordinates[1], report.location.coordinates[0]];
 
     return (
         <Container fluid>
@@ -49,23 +59,28 @@ const ReportDetails = () => {
                 &larr; Back to Reports
             </Button>
             <h1 className={styles.pageHeader}>Report Details #{report.id}</h1>
-            <Row className="justify-content-center">
-                <Col lg={8}>
+            <Row>
+                <Col lg={7} className="mb-4">
                     <Image src={report.imageUrl} fluid className={styles.reportImage} />
-
+                    <div className={styles.mapContainer}>
+                        <MapContainer 
+                            center={position} 
+                            zoom={16} 
+                            style={{ height: '100%', width: '100%' }}
+                            whenCreated={setMap}
+                        >
+                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                            <Marker position={position}></Marker>
+                        </MapContainer>
+                    </div>
+                </Col>
+                <Col lg={5}>
                     <Card className={styles.detailsCard}>
                         <Card.Body className="p-4">
                             <h5 className={styles.cardTitle}>Issue Details</h5>
                             <div className={styles.detailItem}>
                                 <span className={styles.detailLabel}>Status</span>
                                 <div className={styles.detailValue}><StatusBadge status={report.status} /></div>
-                            </div>
-                            <div className={styles.detailItem}>
-                                <span className={styles.detailLabel}>Location</span>
-                                {/* This is the new button that links to the map page */}
-                                <Link to="/view-map" state={{ location: report.location, description: report.description }}>
-                                    <Button variant="outline-primary" size="sm">View on Map</Button>
-                                </Link>
                             </div>
                             <div className={styles.detailItem}>
                                 <span className={styles.detailLabel}>Category</span>
@@ -81,7 +96,6 @@ const ReportDetails = () => {
                             </div>
                         </Card.Body>
                     </Card>
-
                     <Card className={styles.actionsCard}>
                         <Card.Body className="p-4">
                             <h5 className={styles.cardTitle}>Admin Actions</h5>
