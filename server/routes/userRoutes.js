@@ -18,11 +18,26 @@ router.get('/', [protect, adminOnly], async (req, res) => {
 });
 
 // PUT /api/users/:id/role - Update a user's role (Super Admin only)
+// File: server/routes/userRoutes.js
+
+// PUT /api/users/:id/role - Update a user's role (Super Admin only)
 router.put('/:id/role', [protect, adminOnly], async (req, res) => {
     try {
         const { role } = req.body;
-        const user = await User.findByPk(req.params.id);
+        const targetUserId = req.params.id;
+        const adminUserId = req.user.id; // The logged-in admin performing the action
 
+        // Rule 1: Prevent promoting anyone to 'super-admin'
+        if (role === 'super-admin') {
+            return res.status(403).json({ error: 'Cannot promote a user to super-admin.' });
+        }
+
+        // Rule 2: Prevent an admin from changing their own role
+        if (Number(targetUserId) === adminUserId) {
+            return res.status(403).json({ error: 'Admins cannot change their own role.' });
+        }
+
+        const user = await User.findByPk(targetUserId);
         if (!user) {
             return res.status(404).json({ error: 'User not found.' });
         }

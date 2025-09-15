@@ -1,4 +1,5 @@
 // File: src/pages/ReportDetails.jsx
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Image, Button, Form, Badge, Spinner } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -6,6 +7,7 @@ import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import styles from './ReportDetails.module.css';
 import api from '../api/api';
 import { toast } from 'react-toastify';
+import { useReports } from '../hooks/useReports'; // Corrected import
 
 const StatusBadge = ({ status }) => {
     const variant = { Pending: 'warning', 'In Progress': 'primary', Resolved: 'success' }[status];
@@ -13,6 +15,7 @@ const StatusBadge = ({ status }) => {
 };
 
 const ReportDetails = () => {
+    const { fetchDashboardStats } = useReports();
     const { id } = useParams();
     const navigate = useNavigate();
     const [report, setReport] = useState(null);
@@ -25,20 +28,19 @@ const ReportDetails = () => {
                 setReport(response.data);
                 setStatus(response.data.status);
             } catch (error) {
-                console.error("Failed to fetch report:", error);
                 toast.error("Could not load report details.");
             }
         };
         fetchReport();
     }, [id]);
 
-    // THIS IS THE MISSING FUNCTION
     const handleStatusChange = (e) => setStatus(e.target.value);
 
     const handleSaveChanges = async () => {
         try {
             await api.put(`/reports/${id}`, { status });
             toast.success(`Report #${id} status updated successfully!`);
+            fetchDashboardStats(); // Trigger the refresh
             navigate('/reports');
         } catch (error) {
             toast.error("Failed to update report.");
@@ -58,7 +60,6 @@ const ReportDetails = () => {
             </Button>
             <h1 className={styles.pageHeader}>Report Details: #{report.id}</h1>
             <Row>
-                {/* Left Column: Image and Map */}
                 <Col lg={6} className="mb-4">
                     <Image src={report.imageUrl} fluid className={styles.reportImage} />
                     <div className={styles.mapContainer}>
@@ -68,8 +69,6 @@ const ReportDetails = () => {
                         </MapContainer>
                     </div>
                 </Col>
-
-                {/* Right Column: Details and Actions */}
                 <Col lg={6}>
                     <Card className={styles.detailsCard}>
                         <Card.Body className="p-4">
@@ -89,9 +88,7 @@ const ReportDetails = () => {
                                 <span className={styles.detailLabel}>Reported On</span>
                                 <p className={styles.detailValue}>{new Date(report.createdAt).toLocaleString()}</p>
                             </div>
-                            
                             <hr />
-                            
                             <h5 className="mt-4">Admin Actions</h5>
                              <Form.Group controlId="statusSelect">
                                 <Form.Label className={styles.detailLabel}>Change Status</Form.Label>

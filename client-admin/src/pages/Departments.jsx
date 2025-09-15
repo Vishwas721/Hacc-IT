@@ -102,7 +102,7 @@ const Departments = () => {
       <Table hover responsive className={styles.table}>
         <thead>
           <tr>
-            <th>ID</th>
+           
             <th>Department Name</th>
             <th>Actions</th>
           </tr>
@@ -110,7 +110,7 @@ const Departments = () => {
         <tbody>
           {departments.map(dept => (
             <tr key={dept.id}>
-              <td>{dept.id}</td>
+              
               <td>{dept.name}</td>
               <td className={styles.actionsCell}>
                 <Button variant="outline-secondary" size="sm" onClick={() => handleEdit(dept)}>Edit</Button>

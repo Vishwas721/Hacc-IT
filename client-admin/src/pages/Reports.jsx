@@ -30,10 +30,7 @@ const Reports = () => {
   const data = useMemo(() => reports, [reports]);
   const columns = useMemo(
     () => [
-      {
-        header: 'ID',
-        accessorKey: 'id',
-      },
+      
       {
         header: 'Description',
         accessorKey: 'description',

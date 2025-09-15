@@ -1,8 +1,10 @@
+// File: src/App.jsx
 import React from 'react';
 import { Routes, Route, Outlet } from 'react-router-dom';
 import { Container, Row, Col } from 'react-bootstrap';
-import { AuthProvider } from './context/AuthContext';
 import { ToastContainer } from 'react-toastify';
+import { AuthProvider } from './context/AuthContext';
+import { ReportsProvider } from './context/ReportsProvider'; // Corrected import
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import Login from './pages/Login';
@@ -13,9 +15,7 @@ import ReportDetails from './pages/ReportDetails';
 import Users from './pages/Users';
 import Departments from './pages/Departments';
 import Settings from './pages/Settings';
-// Import other pages as needed
 
-// A simple layout wrapper
 const MainLayout = () => {
   return (
     <Container fluid>
@@ -34,23 +34,23 @@ const MainLayout = () => {
 function App() {
   return (
     <AuthProvider>
-      <Routes>
-        <Route path="/" element={<Homepage />} />
-        <Route path="/login" element={<Login />} />
-        
-        <Route element={<ProtectedRoute allowedRoles={['super-admin', 'dept-admin']} />}>
-          <Route element={<MainLayout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/reports/:id" element={<ReportDetails />} />
-            <Route path="/departments" element={<Departments />} />
-            <Route path="/users" element={<Users />} />
-            <Route path="/settings" element={<Settings />} />
-            {/* Add other protected routes here later */}
+      <ReportsProvider>
+        <Routes>
+          <Route path="/" element={<Homepage />} />
+          <Route path="/login" element={<Login />} />
+          <Route element={<ProtectedRoute allowedRoles={['super-admin', 'dept-admin']} />}>
+            <Route element={<MainLayout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/reports/:id" element={<ReportDetails />} />
+              <Route path="/departments" element={<Departments />} />
+              <Route path="/users" element={<Users />} />
+              <Route path="/settings" element={<Settings />} />
+            </Route>
           </Route>
-        </Route>
-      </Routes>
-      <ToastContainer theme="colored" />
+        </Routes>
+        <ToastContainer theme="colored" />
+      </ReportsProvider>
     </AuthProvider>
   );
 }
