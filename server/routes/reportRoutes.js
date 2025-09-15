@@ -11,7 +11,7 @@ const router = express.Router();
 
 // --- AI Setup ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 // --- Cloudinary & Multer Setup ---
 cloudinary.config({
@@ -31,42 +31,74 @@ const upload = multer({ storage: storage });
 // --- ROUTES ---
 
 // POST a new report (with AI analysis)
+// in server/routes/reportRoutes.js
+
+// --- UPDATE THE 'POST' ROUTE ---
+// in server/routes/reportRoutes.js
+
+// --- POST a new report (Bulletproof Version) ---
+// in server/routes/reportRoutes.js
+
+// --- POST a new report (Final Version) ---
 router.post('/', upload.single('image'), async (req, res) => {
     try {
-        const { description, longitude, latitude, userId } = req.body;
+        const { description, longitude, latitude } = req.body;
         if (!description || !longitude || !latitude || !req.file) {
             return res.status(400).json({ error: 'Missing required fields or image.' });
         }
-        let category = 'Other', urgency_score = 1;
-        try {
-            const prompt = `Analyze the following civic issue report text. Based on the text, provide a JSON response with "category" and "urgency_score".
-            Categories must be one of: 'Pothole', 'Streetlight', 'Garbage', 'Water Leakage', 'Public Safety', 'Other'.
-            Urgency score must be a number from 1 (low) to 5 (high), based on words like 'dangerous', 'urgent', 'immediately'.
-            Text: "${description}"
-            JSON Response:`;
-            const result = await model.generateContent(prompt);
-            const responseText = await result.response.text();
-            const aiResponse = JSON.parse(responseText);
-            category = aiResponse.category || 'Other';
-            urgency_score = aiResponse.urgency_score || 1;
-        } catch (aiError) {
-            console.error("AI analysis failed, using default values.", aiError);
+
+        let category = 'Other';
+        let urgency_score = 1;
+
+        if (process.env.GEMINI_API_KEY) {
+            try {
+                // FIX 1: Use the correct, current model name
+                const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+                const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+                const prompt = `Analyze the civic issue report text. Provide a JSON object with "category" and "urgency_score".
+                Valid categories: 'Pothole', 'Streetlight', 'Garbage', 'Water Leakage', 'Public Safety', 'Other'.
+                Urgency score: a number from 1 (low) to 5 (high).
+                Text: "${description}"
+                JSON Response:`;
+
+                const result = await model.generateContent(prompt);
+                const responseText = result.response.text();
+                const cleanedText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const aiResponse = JSON.parse(cleanedText);
+
+                category = aiResponse.category || 'Other';
+                urgency_score = aiResponse.urgency_score || 1;
+            } catch (aiError) {
+                console.error("AI analysis failed, using default values. AI Error:", aiError.message);
+            }
+        } else {
+            console.log("GEMINI_API_KEY not found in .env, skipping AI analysis.");
         }
+        
+        // FIX 2: Find a real admin user to assign the report to
+        const adminUser = await User.findOne({ where: { role: 'super-admin' } });
+        if (!adminUser) {
+            return res.status(500).json({ error: 'No admin user found to assign the report to. Please create a super-admin.' });
+        }
+
         const location = { type: 'Point', coordinates: [longitude, latitude] };
         const newReport = await Report.create({
             description,
             imageUrl: req.file.path,
             location,
-            UserId: userId || 1,
+            UserId: adminUser.id, // Use the real admin's ID
             category,
             urgency_score,
         });
+
         res.status(201).json(newReport);
     } catch (error) {
         console.error('Error creating report:', error);
         res.status(500).json({ error: 'Failed to create report.' });
     }
 });
+
 
 // GET all reports (with search)
 router.get('/', async (req, res) => {

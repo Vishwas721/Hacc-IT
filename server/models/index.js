@@ -1,14 +1,11 @@
-// File: server/models/index.js
 'use strict';
-
 const fs = require('fs');
 const path = require('path');
 const Sequelize = require('sequelize');
-const process = require('process');
 const basename = path.basename(__filename);
 const db = {};
 
-// Create the Sequelize instance
+// This part is correct and remains the same
 const sequelize = new Sequelize(
   process.env.DB_NAME,
   process.env.DB_USER,
@@ -21,15 +18,14 @@ const sequelize = new Sequelize(
   }
 );
 
-// Load each model file from the current directory
+// This part correctly loads all the model files
 fs
   .readdirSync(__dirname)
   .filter(file => {
     return (
       file.indexOf('.') !== 0 &&
       file !== basename &&
-      file.slice(-3) === '.js' &&
-      file.indexOf('.test.js') === -1
+      file.slice(-3) === '.js'
     );
   })
   .forEach(file => {
@@ -37,21 +33,17 @@ fs
     db[model.name] = model;
   });
 
-// Set up model associations (relationships)
+// This part correctly calls the 'associate' method on each model
 Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {
     db[modelName].associate(db);
   }
 });
 
-// Add models and sequelize instance to the export
+// We do NOT need the extra, manual association definitions here.
+// They are now handled by the loop above.
+
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
-
-// Define Associations here after all models are loaded
-const { User, Report } = db;
-User.hasMany(Report);
-Report.belongsTo(User);
-
 
 module.exports = db;

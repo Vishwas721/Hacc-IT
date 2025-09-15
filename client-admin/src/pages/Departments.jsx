@@ -1,25 +1,36 @@
 // File: src/pages/Departments.jsx
-import React, { useState, useEffect } from 'react';
-import { Container, Table, Button, Modal, Form } from 'react-bootstrap';
-import styles from './Departments.module.css';
+/* eslint-disable no-unused-vars */
 
-// Mock Data
-const mockDepartments = [
-  { id: 1, name: 'Public Works' },
-  { id: 2, name: 'Sanitation' },
-  { id: 3, name: 'Electrical Department' },
-  { id: 4, name: 'Water Authority' },
-];
+import React, { useState, useEffect } from 'react';
+import { Container, Table, Button, Modal, Form, Spinner } from 'react-bootstrap';
+import styles from './Departments.module.css';
+import api from '../api/api';
+import { toast } from 'react-toastify';
 
 const Departments = () => {
   const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // Add a saving state for better UX
   const [currentDept, setCurrentDept] = useState({ id: null, name: '' });
 
+  // Function to fetch departments from the API
+  const fetchDepartments = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('/departments');
+      setDepartments(response.data);
+    } catch (error) {
+      toast.error('Failed to fetch departments.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch data when the component first loads
   useEffect(() => {
-    // API call to fetch departments would go here
-    setDepartments(mockDepartments);
+    fetchDepartments();
   }, []);
 
   const handleClose = () => {
@@ -28,38 +39,56 @@ const Departments = () => {
     setIsEditing(false);
   };
 
-  const handleShow = () => setShowModal(true);
-
   const handleAdd = () => {
     setIsEditing(false);
     setCurrentDept({ id: null, name: '' });
-    handleShow();
+    setShowModal(true);
   };
   
   const handleEdit = (dept) => {
     setIsEditing(true);
     setCurrentDept(dept);
-    handleShow();
+    setShowModal(true);
   };
   
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this department?')) {
-      // API call to delete would go here
-      setDepartments(departments.filter(d => d.id !== id));
+      try {
+        await api.delete(`/departments/${id}`);
+        toast.success('Department deleted successfully!');
+        fetchDepartments(); // CRITICAL: Re-fetch data to update the UI
+      } catch (error) {
+        toast.error('Failed to delete department.');
+      }
     }
   };
 
-  const handleSave = () => {
-    if (isEditing) {
-      // API call to update would go here
-      setDepartments(departments.map(d => d.id === currentDept.id ? currentDept : d));
-    } else {
-      // API call to create would go here
-      const newDept = { ...currentDept, id: Date.now() }; // Use timestamp for mock ID
-      setDepartments([...departments, newDept]);
+  const handleSave = async () => {
+    if (!currentDept.name) {
+        toast.warn('Department name cannot be empty.');
+        return;
     }
-    handleClose();
+    setIsSaving(true);
+    const action = isEditing ? 'update' : 'create';
+    try {
+      if (isEditing) {
+        await api.put(`/departments/${currentDept.id}`, { name: currentDept.name });
+      } else {
+        await api.post('/departments', { name: currentDept.name });
+      }
+      toast.success(`Department ${action}d successfully!`);
+      fetchDepartments(); // CRITICAL: Re-fetch data to update the UI
+      handleClose();
+    } catch (error) {
+      toast.error(`Failed to ${action} department.`);
+    } finally {
+        setIsSaving(false);
+    }
   };
+
+  if (loading && departments.length === 0) {
+    return <Spinner animation="border" />;
+  }
 
   return (
     <Container fluid>
@@ -92,13 +121,12 @@ const Departments = () => {
         </tbody>
       </Table>
       
-      {/* Add/Edit Modal */}
       <Modal show={showModal} onHide={handleClose} centered>
         <Modal.Header closeButton>
           <Modal.Title>{isEditing ? 'Edit Department' : 'Add New Department'}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <Form>
+          <Form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
             <Form.Group controlId="departmentName">
               <Form.Label>Department Name</Form.Label>
               <Form.Control 
@@ -106,16 +134,17 @@ const Departments = () => {
                 placeholder="Enter department name" 
                 value={currentDept.name}
                 onChange={(e) => setCurrentDept({...currentDept, name: e.target.value})}
+                autoFocus
               />
             </Form.Group>
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={handleClose}>
+          <Button variant="secondary" onClick={handleClose} disabled={isSaving}>
             Close
           </Button>
-          <Button variant="primary" onClick={handleSave}>
-            Save Changes
+          <Button variant="primary" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? <Spinner as="span" animation="border" size="sm" /> : 'Save Changes'}
           </Button>
         </Modal.Footer>
       </Modal>
