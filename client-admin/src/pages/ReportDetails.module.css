@@ -1,46 +1,66 @@
 /* File: src/pages/ReportDetails.module.css */
 .pageHeader {
-  margin-bottom: 2rem;
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    color: var(--page-title-color);
 }
 
 .backButton {
-  margin-bottom: 1.5rem;
-  font-weight: 500;
+    margin-bottom: 1rem;
+    font-weight: 500;
+    border: none;
+    color: #6c757d;
+}
+.backButton:hover {
+    background-color: #e9ecef;
 }
 
 .reportImage {
-  width: 100%;
-  height: auto;
-  border-radius: 0.75rem;
-  box-shadow: var(--card-shadow);
-  margin-bottom: 1.5rem;
+    width: 100%;
+    height: auto;
+    border-radius: 0.75rem;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 2rem;
 }
 
 .mapContainer {
-  height: 300px;
-  width: 100%;
-  border-radius: 0.75rem;
-  box-shadow: var(--card-shadow);
-  overflow: hidden; /* Important for border-radius on map */
+    height: 350px; /* Increased height */
+    width: 100%;
+    border-radius: 0.75rem;
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
 }
 
-.detailsCard {
-  border: none !important;
-  border-radius: 0.75rem !important;
-  box-shadow: var(--card-shadow) !important;
+.detailsCard, .actionsCard {
+    border: none !important;
+    border-radius: 0.75rem !important;
+    box-shadow: var(--card-shadow) !important;
+    background-color: var(--card-bg);
+    margin-bottom: 2rem;
 }
 
 .detailItem {
-  margin-bottom: 1rem;
+    margin-bottom: 1.25rem;
 }
 
 .detailLabel {
-  font-weight: 600;
-  color: #6c757d;
-  margin-bottom: 0.25rem;
-  display: block;
+    font-weight: 600;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+    display: block;
+    text-transform: uppercase;
+    font-size: 0.8rem;
 }
 
 .detailValue {
-  font-size: 1.1rem;
+    font-size: 1.1rem;
+    color: var(--bs-body-color);
+}
+
+.cardTitle {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    color: var(--page-title-color);
 }

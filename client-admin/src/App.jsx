@@ -15,6 +15,7 @@ import ReportDetails from './pages/ReportDetails';
 import Users from './pages/Users';
 import Departments from './pages/Departments';
 import Settings from './pages/Settings';
+import MapView from './pages/MapView'; 
 
 const MainLayout = () => {
   return (
@@ -36,13 +37,13 @@ function App() {
     <AuthProvider>
       <ReportsProvider>
         <Routes>
-          <Route path="/" element={<Homepage />} />
-          <Route path="/login" element={<Login />} />
+          {/* ... other routes ... */}
           <Route element={<ProtectedRoute allowedRoles={['super-admin', 'dept-admin']} />}>
             <Route element={<MainLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/reports/:id" element={<ReportDetails />} />
+              <Route path="/view-map" element={<MapView />} /> {/* ADD THIS LINE */}
               <Route path="/departments" element={<Departments />} />
               <Route path="/users" element={<Users />} />
               <Route path="/settings" element={<Settings />} />
