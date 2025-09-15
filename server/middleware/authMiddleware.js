@@ -46,4 +46,12 @@ const adminOnly = (req, res, next) => {
     }
 };
 
-module.exports = { protect, adminOnly };
+const managerOnly = (req, res, next) => {
+    if (req.user && (req.user.role === 'super-admin' || req.user.role === 'dept-admin')) {
+        next();
+    } else {
+        res.status(403).json({ error: 'Not authorized for this action' });
+    }
+};
+
+module.exports = { protect, adminOnly: managerOnly };

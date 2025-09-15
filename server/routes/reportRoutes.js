@@ -69,15 +69,25 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
 // PUT /api/reports/:id - Update a report's status
 router.put('/:id', [protect, upload.single('resolvedImage')], async (req, res) => {
     try {
-        const { status, resolvedNotes } = req.body;
+        // Now also accepts departmentId from the request body
+        const { status, resolvedNotes, departmentId } = req.body; 
         const io = req.io;
         const report = await Report.findByPk(req.params.id, { include: User });
 
         if (!report) return res.status(404).json({ error: 'Report not found.' });
         
-        const newHistoryEntry = { status, timestamp: new Date(), notes: resolvedNotes || `Status updated to "${status}" by admin.` };
+        // Update status if it's provided
+        if (status) {
+            const newHistoryEntry = { status, timestamp: new Date(), notes: resolvedNotes || `Status updated to "${status}".` };
+            report.status = status;
+            report.statusHistory = [...report.statusHistory, newHistoryEntry];
+        }
+
+        // Update department if it's provided
+        if (departmentId) {
+            report.DepartmentId = departmentId;
+        }
         
-        report.status = status;
         
         if (status === 'Resolved' && req.file) {
             const b64 = Buffer.from(req.file.buffer).toString("base64");
@@ -101,9 +111,35 @@ router.put('/:id', [protect, upload.single('resolvedImage')], async (req, res) =
 
 // --- ALL GET ROUTES ---
 // GET /api/reports - Get all reports (For Admins)
+// in server/routes/reportRoutes.js
+
+// GET /api/reports - Get all reports (NOW ROLE-AWARE)
 router.get('/', [protect, adminOnly], async (req, res) => {
     try {
-        const reports = await Report.findAll({ include: User, order: [['createdAt', 'DESC']] });
+        const { search } = req.query;
+        let whereClause = {};
+
+        // If a search term is provided, add it to the query
+        if (search) {
+            whereClause.description = { [Op.iLike]: `%${search}%` };
+        }
+
+        // ** THIS IS THE NEW LOGIC **
+        // If the user is a department admin, only show reports for their department
+        if (req.user.role === 'dept-admin' || req.user.role === 'staff') {
+            if (!req.user.DepartmentId) {
+                // This user is not assigned to any department, so they see nothing.
+                return res.json([]); 
+            }
+            whereClause.DepartmentId = req.user.DepartmentId;
+        }
+        // If the user is a super-admin, the whereClause remains empty, so they see all reports.
+
+        const reports = await Report.findAll({
+            where: whereClause,
+            include: User,
+            order: [['createdAt', 'DESC']],
+        });
         res.status(200).json(reports);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch reports.' });

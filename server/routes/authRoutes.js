@@ -14,21 +14,28 @@ router.get('/profile', protect, (req, res) => {
     res.json(req.user);
 });
 
+// in server/routes/authRoutes.js
+
 router.post('/register', async (req, res) => {
     try {
-        const { username, password, role } = req.body;
+        // Now accepts departmentId from the request body
+        const { username, password, role, departmentId } = req.body;
 
-        // Hash the password
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const newUser = await User.create({
             username,
             password: hashedPassword,
-            role: role || 'staff', // Default to 'staff' if no role is provided
+            role: role || 'staff',
+            DepartmentId: departmentId || null, // Assign department if provided
         });
 
         res.status(201).json({ message: 'User created successfully', userId: newUser.id });
     } catch (error) {
+        // Provide a more specific error for unique constraint violation
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.status(400).json({ error: 'Error registering new user.', details: 'Username already exists.' });
+        }
         res.status(500).json({ error: 'Error registering new user.', details: error.message });
     }
 });
