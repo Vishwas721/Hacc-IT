@@ -1,178 +1,133 @@
+// File: client-mobile/screens/SubmitReportScreen.jsx
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Button, Image, TextInput, Alert } from 'react-native';
+import { StyleSheet, Text, View, Button, Image, TextInput, Alert, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import axios from 'axios';
-
-// -----------------------------------------------------------------
-// Replace with your computer’s local IP (check ipconfig if needed)
-const API_URL = 'http://192.168.207.38:5000';
-// -----------------------------------------------------------------
+import * as SecureStore from 'expo-secure-store';
+import { API_URL } from '../config';
 
 export default function SubmitReportScreen({ navigation }) {
-  const [hasCameraPermission, setHasCameraPermission] = useState(null);
-  const [hasLocationPermission, setHasLocationPermission] = useState(null);
-  const [photo, setPhoto] = useState(null);
-  const [location, setLocation] = useState(null);
-  const [description, setDescription] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+    const [hasCameraPermission, setHasCameraPermission] = useState(null);
+    const [hasLocationPermission, setHasLocationPermission] = useState(null);
+    const [photo, setPhoto] = useState(null);
+    const [location, setLocation] = useState(null);
+    const [description, setDescription] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Ask for permissions
-  useEffect(() => {
-    (async () => {
-      const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
-      setHasCameraPermission(cameraStatus.status === 'granted');
+    useEffect(() => {
+        (async () => {
+            await ImagePicker.requestCameraPermissionsAsync();
+            await Location.requestForegroundPermissionsAsync();
+        })();
+    }, []);
 
-      const locationStatus = await Location.requestForegroundPermissionsAsync();
-      setHasLocationPermission(locationStatus.status === 'granted');
-    })();
-  }, []);
+    const takePictureAndGetLocation = async () => {
+        const { status: cameraStatus } = await ImagePicker.getCameraPermissionsAsync();
+        if (cameraStatus !== 'granted') {
+            Alert.alert('Permission Denied', 'Camera access is required to submit a report.');
+            return;
+        }
 
-  // Take picture and get location
-  const takePicture = async () => {
-    if (!hasCameraPermission) {
-      Alert.alert('Permission Denied', 'Cannot access camera without permission.');
-      return;
-    }
+        let result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            quality: 0.7,
+        });
 
-    let result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.7,
-    });
+        if (!result.canceled) {
+            setPhoto(result.assets[0]);
+            const { status: locationStatus } = await Location.getForegroundPermissionsAsync();
+            if (locationStatus !== 'granted') {
+                Alert.alert('Permission Denied', 'Location access is required.');
+                return;
+            }
+            let loc = await Location.getCurrentPositionAsync({});
+            setLocation(loc);
+            Alert.alert('Location Captured!', `Lat: ${loc.coords.latitude.toFixed(4)}, Lon: ${loc.coords.longitude.toFixed(4)}`);
+        }
+    };
 
-    if (!result.canceled) {
-      setPhoto(result.assets[0]);
+    const handleSubmit = async () => {
+        if (!photo || !location || !description) {
+            Alert.alert('Error', 'Please take a photo, capture location, and enter a description.');
+            return;
+        }
+        setIsSubmitting(true);
 
-      if (hasLocationPermission) {
-        let loc = await Location.getCurrentPositionAsync({});
-        setLocation(loc);
-        Alert.alert('Location Captured!', `Lat: ${loc.coords.latitude}, Lon: ${loc.coords.longitude}`);
-      } else {
-        Alert.alert('Permission Denied', 'Cannot get location without permission.');
-      }
-    }
-  };
+        try {
+            const token = await SecureStore.getItemAsync('token');
+            if (!token) {
+                Alert.alert('Authentication Error', 'You are not logged in.');
+                setIsSubmitting(false);
+                return;
+            }
+            
+            const formData = new FormData();
+            const uriParts = photo.uri.split('.');
+            const fileType = uriParts[uriParts.length - 1];
 
-  // Submit report
-  const handleSubmit = async () => {
-    if (!photo || !location || !description) {
-      Alert.alert('Error', 'Please take a photo, add a description, and allow location.');
-      return;
-    }
+            formData.append('image', {
+                uri: photo.uri,
+                name: `photo.${fileType}`,
+                type: `image/${fileType}`,
+            });
 
-    setIsSubmitting(true);
+            formData.append('description', description);
+            formData.append('latitude', location.coords.latitude);
+            formData.append('longitude', location.coords.longitude);
 
-    const formData = new FormData();
-    const uriParts = photo.uri.split('.');
-    const fileType = uriParts[uriParts.length - 1];
+            await axios.post(`${API_URL}/api/reports`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
 
-    formData.append('image', {
-      uri: photo.uri,
-      name: `photo.${fileType}`,
-      type: `image/${fileType}`,
-    });
+            Alert.alert('✅ Success!', 'Your report has been submitted.');
+            // Go back to the list screen after a successful submission
+            navigation.navigate('MyReports');
 
-    formData.append('description', description);
-    formData.append('latitude', location.coords.latitude);
-    formData.append('longitude', location.coords.longitude);
+        } catch (error) {
+            console.error(error.response ? error.response.data : error.message);
+            Alert.alert('❌ Submission Failed', 'An error occurred. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
-    try {
-      const response = await axios.post(`${API_URL}/api/reports`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+    return (
+        <View style={styles.container}>
+            <Text style={styles.title}>📌 Submit a Civic Report</Text>
 
-      Alert.alert('✅ Success!', 'Your report has been submitted.');
-      // Reset form
-      setPhoto(null);
-      setLocation(null);
-      setDescription('');
+            {photo ? (
+                <Image source={{ uri: photo.uri }} style={styles.image} />
+            ) : (
+                <View style={styles.placeholder}><Text>No photo taken</Text></View>
+            )}
 
-    } catch (error) {
-      console.error(error.response ? error.response.data : error.message);
-      Alert.alert('❌ Submission Failed', 'An error occurred. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+            <Button title="Take Photo & Get Location" onPress={takePictureAndGetLocation} />
 
-  if (hasCameraPermission === null || hasLocationPermission === null) {
-    return <View />;
-  }
+            <TextInput
+                style={styles.input}
+                placeholder="Describe the issue..."
+                value={description}
+                onChangeText={setDescription}
+                multiline
+            />
 
-  if (hasCameraPermission === false) {
-    return <Text>No access to camera. Please enable it in your settings.</Text>;
-  }
-
-  if (hasLocationPermission === false) {
-    return <Text>No access to location. Please enable it in your settings.</Text>;
-  }
-
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>📌 Submit a Civic Report</Text>
-
-      {photo ? (
-        <Image source={{ uri: photo.uri }} style={styles.image} />
-      ) : (
-        <View style={styles.placeholder}>
-          <Text>No photo taken</Text>
+            {isSubmitting ? (
+                <ActivityIndicator size="large" color="#007bff" />
+            ) : (
+                <Button title="Submit Report" onPress={handleSubmit} />
+            )}
         </View>
-      )}
-
-      <Button title="Take Photo & Get Location" onPress={takePicture} />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Describe the issue..."
-        value={description}
-        onChangeText={setDescription}
-      />
-
-      <Button
-        title={isSubmitting ? "Submitting..." : "Submit Report"}
-        onPress={handleSubmit}
-        disabled={isSubmitting}
-      />
-    </View>
-  );
+    );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  placeholder: {
-    width: 200,
-    height: 200,
-    backgroundColor: '#eee',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  image: {
-    width: 200,
-    height: 200,
-    marginBottom: 20,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 10,
-    width: '100%',
-    marginTop: 20,
-    marginBottom: 20,
-    borderRadius: 5,
-  },
+    container: { flex: 1, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', padding: 20 },
+    title: { fontSize: 22, fontWeight: 'bold', marginBottom: 20 },
+    placeholder: { width: 200, height: 200, backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderRadius: 10 },
+    image: { width: 200, height: 200, marginBottom: 20, borderRadius: 10 },
+    input: { borderWidth: 1, borderColor: '#ccc', padding: 10, width: '100%', marginTop: 20, marginBottom: 20, borderRadius: 5, minHeight: 80, textAlignVertical: 'top' },
 });

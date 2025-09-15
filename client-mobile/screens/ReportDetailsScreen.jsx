@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Image } from 'react-native';
 import axios from 'axios';
-
-const API_URL = 'http://192.168.207.38:5000';
+import { API_URL } from '../config'; // ADD THIS LINE
+// DELETE the old line: const API_URL = 'http://...';
 
 const ReportDetailsScreen = ({ route }) => {
     const { reportId } = route.params;
