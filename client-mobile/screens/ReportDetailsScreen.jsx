@@ -1,28 +1,49 @@
 // File: client-mobile/screens/ReportDetailsScreen.jsx
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Image, Alert } from 'react-native';
 import axios from 'axios';
-import { API_URL } from '../config'; // ADD THIS LINE
-// DELETE the old line: const API_URL = 'http://...';
+import * as SecureStore from 'expo-secure-store'; // 1. Import SecureStore
+import { API_URL } from '../config';
 
 const ReportDetailsScreen = ({ route }) => {
     const { reportId } = route.params;
     const [report, setReport] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchReport = async () => {
             try {
-                const response = await axios.get(`${API_URL}/api/reports/${reportId}`);
+                // 2. Get the token from secure storage
+                const token = await SecureStore.getItemAsync('token');
+                if (!token) {
+                    Alert.alert("Authentication Error", "Token not found.");
+                    setLoading(false);
+                    return;
+                }
+
+                // 3. Send the token in the Authorization header
+                const response = await axios.get(`${API_URL}/api/reports/${reportId}`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
                 setReport(response.data);
             } catch (error) {
                 console.error("Failed to fetch report details", error);
+                Alert.alert("Error", "Could not load report details.");
+            } finally {
+                setLoading(false);
             }
         };
         fetchReport();
     }, [reportId]);
 
-    if (!report) {
+    if (loading) {
         return <ActivityIndicator size="large" style={styles.loader} />;
+    }
+    
+    if (!report) {
+        return <View><Text style={styles.title}>Report not found.</Text></View>
     }
 
     return (

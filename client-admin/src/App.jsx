@@ -1,10 +1,10 @@
-// File: src/App.jsx
+// File: client-admin/src/App.jsx
 import React from 'react';
 import { Routes, Route, Outlet } from 'react-router-dom';
 import { Container, Row, Col } from 'react-bootstrap';
 import { ToastContainer } from 'react-toastify';
 import { AuthProvider } from './context/AuthContext';
-import { ReportsProvider } from './context/ReportsProvider'; // Corrected import
+import { ReportsProvider } from './context/ReportsProvider'; // Correct import path
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import Login from './pages/Login';
@@ -15,7 +15,6 @@ import ReportDetails from './pages/ReportDetails';
 import Users from './pages/Users';
 import Departments from './pages/Departments';
 import Settings from './pages/Settings';
-
 
 const MainLayout = () => {
   return (
@@ -37,15 +36,13 @@ function App() {
     <AuthProvider>
       <ReportsProvider>
         <Routes>
-          <Route path="/login" element={<Login />} />
           <Route path="/" element={<Homepage />} />
-          {/* ... other routes ... */}
-          <Route element={<ProtectedRoute allowedRoles={['super-admin', 'dept-admin']} />}>
+          <Route path="/login" element={<Login />} />
+          <Route element={<ProtectedRoute allowedRoles={['super-admin', 'dept-admin', 'staff']} />}>
             <Route element={<MainLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/reports/:id" element={<ReportDetails />} />
-
               <Route path="/departments" element={<Departments />} />
               <Route path="/users" element={<Users />} />
               <Route path="/settings" element={<Settings />} />

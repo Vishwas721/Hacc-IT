@@ -22,6 +22,14 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.JSONB, // A column that can store JSON data
       defaultValue: [],
     },
+        resolvedNotes: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+    },
+    resolvedImageUrl: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    }
   }, {
     sequelize,
     modelName: 'Report',

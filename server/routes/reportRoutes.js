@@ -1,12 +1,10 @@
-// File: server/routes/reportRoutes.js
 const express = require('express');
 const multer = require('multer');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('cloudinary').v2;
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { Op, sequelize } = require('sequelize'); // Correctly import sequelize
+const { Op, sequelize } = require('sequelize');
 const { Report, User } = require('../models');
-const { protect, adminOnly } = require('../middleware/authMiddleware'); // Import both middlewares
+const { protect, adminOnly } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -16,43 +14,35 @@ cloudinary.config({
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: { folder: 'civic-reports', format: 'png' },
-});
-const upload = multer({ storage: storage });
+const upload = multer({ storage: multer.memoryStorage() });
 
 // --- ROUTES ---
 
-// POST /api/reports - Create a new report (Protected)
-router.post('/', [upload.single('image'), protect], async (req, res) => {
+// POST /api/reports - Create a new report
+router.post('/', [protect, upload.single('image')], async (req, res) => {
     try {
-        const { description, longitude, latitude } = req.body;
-        const loggedInUserId = req.user.id; // Get the user ID from the token
+        if (!req.file) return res.status(400).json({ error: 'Image file is required.' });
 
-        if (!description || !longitude || !latitude || !req.file) {
-            return res.status(400).json({ error: 'Missing required fields or image.' });
-        }
+        const b64 = Buffer.from(req.file.buffer).toString("base64");
+        let dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+        const cloudinaryResponse = await cloudinary.uploader.upload(dataURI, { folder: "civic-reports" });
+        
+        const { description, longitude, latitude } = req.body;
+        const loggedInUserId = req.user.id;
         
         let category = 'Other', urgency_score = 1;
         if (process.env.GEMINI_API_KEY) {
             try {
                 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
                 const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-                const prompt = `Analyze the civic issue report text. Provide a JSON object with "category" and "urgency_score".
-                Valid categories: 'Pothole', 'Streetlight', 'Garbage', 'Water Leakage', 'Public Safety', 'Other'.
-                Urgency score: a number from 1 (low) to 5 (high).
-                Text: "${description}"
-                JSON Response:`;
+                const prompt = `Analyze: "${description}". Return JSON with "category" (one of: 'Pothole', 'Streetlight', 'Garbage', 'Other') and "urgency_score" (1-5).`;
                 const result = await model.generateContent(prompt);
                 const responseText = result.response.text();
                 const cleanedText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
                 const aiResponse = JSON.parse(cleanedText);
                 category = aiResponse.category || 'Other';
                 urgency_score = aiResponse.urgency_score || 1;
-            } catch (aiError) {
-                console.error("AI analysis failed, using default values. AI Error:", aiError.message);
-            }
+            } catch (aiError) { console.error("AI analysis failed:", aiError.message); }
         }
 
         const initialHistory = [{ status: 'Submitted', timestamp: new Date(), notes: 'Report received from citizen.' }];
@@ -60,9 +50,9 @@ router.post('/', [upload.single('image'), protect], async (req, res) => {
 
         const newReport = await Report.create({
             description,
-            imageUrl: req.file.path,
+            imageUrl: cloudinaryResponse.secure_url,
             location,
-            UserId: loggedInUserId, // Use the ID of the user who is actually logged in
+            UserId: loggedInUserId,
             category,
             urgency_score,
             status: 'Submitted',
@@ -76,27 +66,51 @@ router.post('/', [upload.single('image'), protect], async (req, res) => {
     }
 });
 
+// PUT /api/reports/:id - Update a report's status
+router.put('/:id', [protect, upload.single('resolvedImage')], async (req, res) => {
+    try {
+        const { status, resolvedNotes } = req.body;
+        const io = req.io;
+        const report = await Report.findByPk(req.params.id, { include: User });
+
+        if (!report) return res.status(404).json({ error: 'Report not found.' });
+        
+        const newHistoryEntry = { status, timestamp: new Date(), notes: resolvedNotes || `Status updated to "${status}" by admin.` };
+        
+        report.status = status;
+        
+        if (status === 'Resolved' && req.file) {
+            const b64 = Buffer.from(req.file.buffer).toString("base64");
+            let dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+            const cloudinaryResponse = await cloudinary.uploader.upload(dataURI, { folder: "civic-reports-resolved" });
+            report.resolvedImageUrl = cloudinaryResponse.secure_url;
+            report.resolvedNotes = resolvedNotes;
+        }
+        
+        report.statusHistory = [...report.statusHistory, newHistoryEntry];
+        await report.save();
+        
+        io.emit('report-updated', report.toJSON());
+        
+        res.status(200).json(report);
+    } catch (error) {
+        console.error("Error updating report:", error);
+        res.status(500).json({ error: 'Failed to update report.' });
+    }
+});
+
+// --- ALL GET ROUTES ---
 // GET /api/reports - Get all reports (For Admins)
 router.get('/', [protect, adminOnly], async (req, res) => {
     try {
-        const { search } = req.query;
-        let whereClause = {};
-        if (search) {
-            whereClause = { description: { [Op.iLike]: `%${search}%` } };
-        }
-        const reports = await Report.findAll({
-            where: whereClause,
-            include: User,
-            order: [['createdAt', 'DESC']],
-        });
+        const reports = await Report.findAll({ include: User, order: [['createdAt', 'DESC']] });
         res.status(200).json(reports);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch reports.' });
     }
 });
-
 // GET /api/reports/stats - Get report statistics
-router.get('/stats', [protect, adminOnly], async (req, res) => {
+router.get('/stats', [protect, adminOnly], async (req, res) => { 
     try {
         const total = await Report.count();
         const pending = await Report.count({ where: { status: { [Op.iLike]: 'Pending' } } });
@@ -123,7 +137,7 @@ router.get('/by-category', [protect, adminOnly], async (req, res) => {
 });
 
 // GET /api/reports/my-reports - Get reports for the currently logged-in user
-router.get('/my-reports', protect, async (req, res) => {
+router.get('/my-reports', protect, async (req, res) => { 
     try {
         const reports = await Report.findAll({
             where: { UserId: req.user.id },
@@ -136,6 +150,9 @@ router.get('/my-reports', protect, async (req, res) => {
 });
 
 // GET /api/reports/:id - Get a single report by ID (Protected)
+// in server/routes/reportRoutes.js
+
+// PUT /api/reports/:id - Update a report's status (Protected)
 router.get('/:id', protect, async (req, res) => {
     try {
         const report = await Report.findByPk(req.params.id);
@@ -145,31 +162,6 @@ router.get('/:id', protect, async (req, res) => {
         res.status(200).json(report);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch report.' });
-    }
-});
-
-// PUT /api/reports/:id - Update a report's status (Protected)
-router.put('/:id', protect, async (req, res) => {
-    try {
-        const { status } = req.body;
-        const io = req.app.get('socketio');
-        const report = await Report.findByPk(req.params.id, { include: User }); // Include User to get their ID
-
-        if (!report) return res.status(404).json({ error: 'Report not found.' });
-        
-        const newHistoryEntry = { status, timestamp: new Date(), notes: `Status updated by admin.` };
-        
-        report.status = status;
-        report.statusHistory = [...report.statusHistory, newHistoryEntry];
-        
-        await report.save();
-        
-        io.emit('report-updated', report);
-        
-        res.status(200).json(report);
-    } catch (error) {
-        console.error("Error updating report:", error);
-        res.status(500).json({ error: 'Failed to update report.' });
     }
 });
 
