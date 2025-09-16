@@ -1,15 +1,16 @@
-// File: server/routes/userRoutes.js
 const express = require('express');
 const { User, Department } = require('../models');
-const { protect, adminOnly } = require('../middleware/authMiddleware');
+// --- FIX: Import the new, correct middleware ---
+const { protect, municipalAdminOnly } = require('../middleware/authMiddleware'); 
 const router = express.Router();
 
-// GET /api/users - Get all users (Super Admin only)
-router.get('/', [protect, adminOnly], async (req, res) => {
+// GET /api/users - Get all users 
+// --- FIX: Use the correct 'municipalAdminOnly' middleware ---
+router.get('/', [protect, municipalAdminOnly], async (req, res) => {
     try {
         const users = await User.findAll({
             attributes: { exclude: ['password'] },
-            include: [Department], // Include the department info for each user
+            include: [Department],
             order: [['createdAt', 'DESC']],
         });
         res.json(users);
@@ -18,23 +19,20 @@ router.get('/', [protect, adminOnly], async (req, res) => {
     }
 });
 
-
-// PUT /api/users/:id/role - Update a user's role (Super Admin only)
-// File: server/routes/userRoutes.js
-
-// PUT /api/users/:id/role - Update a user's role (Super Admin only)
-router.put('/:id/role', [protect, adminOnly], async (req, res) => {
+// PUT /api/users/:id/role - Update a user's role
+// --- FIX: Use the correct 'municipalAdminOnly' middleware ---
+router.put('/:id/role', [protect, municipalAdminOnly], async (req, res) => {
     try {
         const { role, departmentId } = req.body;
         const targetUserId = req.params.id;
-        const adminUserId = req.user.id; // The logged-in admin performing the action
+        const adminUserId = req.user.id; 
 
-        // Rule 1: Prevent promoting anyone to 'super-admin'
+        // Prevent promoting to 'super-admin'
         if (role === 'super-admin') {
             return res.status(403).json({ error: 'Cannot promote a user to super-admin.' });
         }
 
-        // Rule 2: Prevent an admin from changing their own role
+        // Prevent an admin from changing their own role
         if (Number(targetUserId) === adminUserId) {
             return res.status(403).json({ error: 'Admins cannot change their own role.' });
         }
@@ -43,10 +41,8 @@ router.put('/:id/role', [protect, adminOnly], async (req, res) => {
         if (!user) return res.status(404).json({ error: 'User not found.' });
         
         user.role = role;
-        // Assign department if the role is dept-admin or staff, otherwise null
-        user.DepartmentId = (role === 'dept-admin' || role === 'staff') ? departmentId : null;
+        user.DepartmentId = (role === 'dept-admin' || role === 'staff' || role === 'municipal-admin') ? departmentId : null;
         await user.save();
-        
         
         const { password, ...userWithoutPassword } = user.get();
         res.json(userWithoutPassword);

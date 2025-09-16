@@ -38,20 +38,31 @@ const protect = async (req, res, next) => {
     }
 };
 
-const adminOnly = (req, res, next) => {
-    if (req.user && req.user.role === 'super-admin') {
+const municipalAdminOnly = (req, res, next) => {
+    if (req.user && req.user.role === 'municipal-admin') {
         next();
     } else {
-        res.status(403).json({ error: 'Not authorized as an admin' });
+        res.status(403).json({ error: 'Not authorized as a Municipal Admin' });
     }
 };
 
-const managerOnly = (req, res, next) => {
-    if (req.user && (req.user.role === 'super-admin' || req.user.role === 'dept-admin')) {
+const deptAdminOnly = (req, res, next) => {
+    if (req.user && req.user.role === 'dept-admin') {
         next();
     } else {
-        res.status(403).json({ error: 'Not authorized for this action' });
+        res.status(403).json({ error: 'Not authorized as a Department Admin' });
     }
 };
 
-module.exports = { protect, adminOnly: managerOnly };
+// An admin can be from any of the admin tiers
+const anyAdmin = (req, res, next) => {
+    const adminRoles = ['dept-admin', 'municipal-admin', 'super-admin'];
+    if (req.user && adminRoles.includes(req.user.role)) {
+        next();
+    } else {
+        res.status(403).json({ error: 'Admin access required.' });
+    }
+};
+
+
+module.exports = { protect, municipalAdminOnly, deptAdminOnly, anyAdmin };

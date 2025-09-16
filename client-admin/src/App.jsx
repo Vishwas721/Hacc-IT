@@ -15,6 +15,7 @@ import ReportDetails from './pages/ReportDetails';
 import Users from './pages/Users';
 import Departments from './pages/Departments';
 import Settings from './pages/Settings';
+import MapView from './pages/MapView'; // Ensure this path is correct
 
 const MainLayout = () => {
   return (
@@ -38,7 +39,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Homepage />} />
           <Route path="/login" element={<Login />} />
-          <Route element={<ProtectedRoute allowedRoles={['super-admin', 'dept-admin', 'staff']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['super-admin', 'municipal-admin', 'dept-admin', 'staff']} />}>
             <Route element={<MainLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/reports" element={<Reports />} />
@@ -46,6 +47,7 @@ function App() {
               <Route path="/departments" element={<Departments />} />
               <Route path="/users" element={<Users />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/map-view" element={<MapView />} />
             </Route>
           </Route>
         </Routes>

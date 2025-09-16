@@ -6,13 +6,14 @@ import { House, FileEarmarkText, Building, People, Gear, Map } from 'react-boots
 import styles from './Sidebar.module.css';
 import { useAuth } from '../context/AuthContext';
 
+// In client-admin/src/components/Sidebar.jsx
 const allNavItems = [
-  { icon: House, label: 'Dashboard', path: '/dashboard', roles: ['super-admin', 'dept-admin'] },
-  { icon: FileEarmarkText, label: 'Reports', path: '/reports', roles: ['super-admin', 'dept-admin', 'staff'] },
-  { icon: Map, label: 'Map View', path: '/map-view', roles: ['super-admin', 'dept-admin'] },
-  { icon: Building, label: 'Departments', path: '/departments', roles: ['super-admin'] },
-  { icon: People, label: 'Users', path: '/users', roles: ['super-admin'] },
-  { icon: Gear, label: 'Settings', path: '/settings', roles: ['super-admin', 'dept-admin', 'staff'] },
+  { icon: House, label: 'Dashboard', path: '/dashboard', roles: ['super-admin', 'municipal-admin', 'dept-admin'] }, // All admins see dashboard
+  { icon: FileEarmarkText, label: 'Reports', path: '/reports', roles: ['municipal-admin', 'dept-admin'] }, // Only managers see report list
+  { icon: Map, label: 'Map View', path: '/map-view', roles: ['super-admin', 'municipal-admin', 'dept-admin'] },
+  { icon: Building, label: 'Departments', path: '/departments', roles: ['municipal-admin'] }, // Municipal admin manages depts
+  { icon: People, label: 'Users', path: '/users', roles: ['municipal-admin'] }, // Municipal admin manages users
+  { icon: Gear, label: 'Settings', path: '/settings', roles: ['super-admin', 'municipal-admin', 'dept-admin'] },
 ];
 
 const Sidebar = () => {

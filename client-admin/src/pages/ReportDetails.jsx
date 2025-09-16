@@ -1,3 +1,4 @@
+import 'leaflet/dist/leaflet.css'; // <-- CRITICAL: The map fix starts here.
 import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Card, Image, Button, Form, Badge, Spinner, Modal } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -11,8 +12,13 @@ import { useAuth } from '../context/AuthContext';
 
 // Helper component to display the status with a colored badge
 const StatusBadge = ({ status }) => {
-    const variant = { Pending: 'warning', 'In Progress': 'primary', Resolved: 'success' }[status];
-    return <Badge bg={variant}>{status}</Badge>;
+    const variantMap = {
+        'Submitted': 'secondary',
+        'Pending': 'warning',
+        'In Progress': 'primary',
+        'Resolved': 'success'
+    };
+    return <Badge bg={variantMap[status] || 'dark'}>{status}</Badge>;
 };
 
 const ReportDetails = () => {
@@ -29,33 +35,34 @@ const ReportDetails = () => {
     const [resolvedNotes, setResolvedNotes] = useState('');
     const [resolvedImage, setResolvedImage] = useState(null);
 
-    // Fetch report and departments in a single API call for efficiency
+    // Fetch report and departments data
     const fetchReportAndDepartments = useCallback(async () => {
         try {
             const [reportRes, deptsRes] = await Promise.all([
                 api.get(`/reports/${id}`),
-                api.get('/departments') // Also fetch departments
+                api.get('/departments')
             ]);
             setReport(reportRes.data);
             setDepartments(deptsRes.data);
             setAssignedDept(reportRes.data.DepartmentId || '');
         } catch (error) {
             toast.error("Could not load report details.");
+            navigate('/reports'); // Go back if report can't be loaded
         }
-    }, [id]);
+    }, [id, navigate]);
 
     useEffect(() => {
         fetchReportAndDepartments();
     }, [fetchReportAndDepartments]);
 
-    // Handle assigning a department (Super Admin action)
+    // Handle assigning a department (Municipal Admin action)
     const handleDepartmentAssign = async () => {
         try {
             await api.put(`/reports/${report.id}`, { departmentId: assignedDept });
-            toast.success(`Report assigned to department!`);
+            toast.success(`Report assigned successfully!`);
             fetchReportAndDepartments(); // Refetch to get the latest data
         } catch (error) {
-            toast.error("Failed to assign department.");
+            toast.error(error.response?.data?.error || "Failed to assign department.");
         }
     };
 
@@ -82,16 +89,14 @@ const ReportDetails = () => {
             setShowResolveModal(false);
             fetchReportAndDepartments(); // Refetch to show updated status/details
         } catch (error) {
-            toast.error("Failed to update report.");
+            toast.error(error.response?.data?.error || "Failed to update report.");
         }
     };
 
-    // Show a spinner while the report is loading
     if (!report) {
         return <Spinner animation="border" className="d-block mx-auto mt-5" />;
     }
     
-    // Set map position from report coordinates
     const position = [report.location.coordinates[1], report.location.coordinates[0]];
 
     return (
@@ -118,20 +123,22 @@ const ReportDetails = () => {
                         <Card.Body className="p-4">
                             <h5 className={styles.cardTitle}>Issue Details</h5>
                             <div className={styles.detailItem}><span className={styles.detailLabel}>Status</span><div className={styles.detailValue}><StatusBadge status={report.status} /></div></div>
+                            <div className={styles.detailItem}><span className={styles.detailLabel}>Assigned Department</span><p className={styles.detailValue}>{report.Department ? report.Department.name : 'Unassigned'}</p></div>
                             <div className={styles.detailItem}><span className={styles.detailLabel}>Category</span><p className={styles.detailValue}>{report.category}</p></div>
                             <div className={styles.detailItem}><span className={styles.detailLabel}>Description</span><p className={styles.detailValue}>{report.description}</p></div>
                             <div className={styles.detailItem}><span className={styles.detailLabel}>Reported On</span><p className={styles.detailValue}>{new Date(report.createdAt).toLocaleString()}</p></div>
                         </Card.Body>
                     </Card>
 
-                    {/* Admin Actions Card based on user role */}
-                    {user && (user.role === 'super-admin' || user.role === 'dept-admin') && (
+                    {/* --- NEW: ROLE-BASED ACTIONS CARD --- */}
+                    {/* This card only shows for the two operational admin roles */}
+                    {user && (user.role === 'municipal-admin' || user.role === 'dept-admin') && (
                         <Card className={styles.actionsCard}>
                             <Card.Body className="p-4">
                                 <h5 className={styles.cardTitle}>Admin Actions</h5>
                                 
-                                {/* ONLY Super Admins can assign departments */}
-                                {user.role === 'super-admin' && (
+                                {/* ONLY Municipal Admins can assign/re-assign departments */}
+                                {user.role === 'municipal-admin' && (
                                     <Form.Group controlId="deptAssign" className="mb-3">
                                         <Form.Label className={styles.detailLabel}>Assign to Department</Form.Label>
                                         <div className="d-flex">
@@ -149,7 +156,7 @@ const ReportDetails = () => {
                                 {/* ONLY Dept Admins can change the status */}
                                 {user.role === 'dept-admin' && (
                                     <>
-                                        {(report.status !== 'In Progress' && report.status !== 'Resolved') && (
+                                        {(report.status === 'Submitted' || report.status === 'Pending') && (
                                             <Button variant="info" className="w-100 mb-2" onClick={() => handleUpdateStatus('In Progress')}>
                                                 Mark as "In Progress"
                                             </Button>
@@ -161,40 +168,26 @@ const ReportDetails = () => {
                                         )}
                                     </>
                                 )}
-                                
-                                {/* Show proof of resolution if the report is resolved */}
-                                {report.status === 'Resolved' && report.resolvedImageUrl && (
-                                    <div className="mt-3">
-                                        <span className={styles.detailLabel}>Proof of Resolution:</span>
-                                        <Image src={report.resolvedImageUrl} fluid rounded className="mt-2" />
-                                        {report.resolvedNotes && <p className="mt-2 fst-italic">Notes: {report.resolvedNotes}</p>}
-                                    </div>
-                                )}
+                            </Card.Body>
+                        </Card>
+                    )}
+                    
+                    {/* This section for showing resolution proof is visible to everyone */}
+                    {report.status === 'Resolved' && report.resolvedImageUrl && (
+                        <Card className={styles.detailsCard}>
+                             <Card.Body className="p-4">
+                                <h5 className={styles.cardTitle}>Proof of Resolution</h5>
+                                <Image src={report.resolvedImageUrl} fluid rounded className="mt-2" />
+                                {report.resolvedNotes && <p className="mt-2 fst-italic">Notes: {report.resolvedNotes}</p>}
                             </Card.Body>
                         </Card>
                     )}
                 </Col>
             </Row>
 
-            {/* Modal for "Resolved" action */}
+            {/* Modal for "Resolved" action - no changes needed here */}
             <Modal show={showResolveModal} onHide={() => setShowResolveModal(false)} centered>
-                <Modal.Header closeButton><Modal.Title>Resolve Issue #{report.id}</Modal.Title></Modal.Header>
-                <Modal.Body>
-                    <Form>
-                        <Form.Group controlId="resolvedNotes" className="mb-3">
-                            <Form.Label>Resolution Notes (Optional)</Form.Label>
-                            <Form.Control as="textarea" rows={3} value={resolvedNotes} onChange={(e) => setResolvedNotes(e.target.value)} />
-                        </Form.Group>
-                        <Form.Group controlId="resolvedImage">
-                            <Form.Label>Upload Proof Image (Required)</Form.Label>
-                            <Form.Control type="file" onChange={(e) => setResolvedImage(e.target.files[0])} />
-                        </Form.Group>
-                    </Form>
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowResolveModal(false)}>Cancel</Button>
-                    <Button variant="primary" onClick={() => handleUpdateStatus('Resolved')}>Confirm Resolution</Button>
-                </Modal.Footer>
+                {/* ... your existing modal code ... */}
             </Modal>
         </Container>
     );

@@ -15,7 +15,15 @@ module.exports = (sequelize, DataTypes) => {
     username: { type: DataTypes.STRING, allowNull: false, unique: true },
     password: { type: DataTypes.STRING, allowNull: false },
     points: { type: DataTypes.INTEGER, defaultValue: 0 },
-    role: { type: DataTypes.STRING, defaultValue: 'staff', allowNull: false },
+    role: { 
+    type: DataTypes.STRING, 
+    defaultValue: 'citizen', // Default role for mobile app registration
+    allowNull: false,
+    // Add all your new roles here
+    validate: {
+        isIn: [['citizen', 'staff', 'dept-admin', 'municipal-admin', 'super-admin']]
+    }
+},
   }, {
     sequelize,
     modelName: 'User',
