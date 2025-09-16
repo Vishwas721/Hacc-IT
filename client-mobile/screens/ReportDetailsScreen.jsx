@@ -1,10 +1,9 @@
-// File: client-mobile/screens/ReportDetailsScreen.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Image, Alert, RefreshControl } from 'react-native';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { API_URL } from '../config';
-import { useFocusEffect } from '@react-navigation/native'; // A better hook for this
+import { useFocusEffect } from '@react-navigation/native';
 
 const ReportDetailsScreen = ({ route }) => {
     const { reportId } = route.params;
@@ -33,7 +32,6 @@ const ReportDetailsScreen = ({ route }) => {
         }
     }, [reportId]);
 
-    // useFocusEffect is often better than useEffect with a navigation listener
     useFocusEffect(
         useCallback(() => {
             fetchReport();
@@ -59,6 +57,15 @@ const ReportDetailsScreen = ({ route }) => {
                 <Text style={styles.description}>{report.description}</Text>
             </View>
             
+            {/* SLA Display Section */}
+            {report.slaDeadline && (
+                <View style={styles.slaContainer}>
+                    <Text style={styles.slaText}>
+                        🕒 Expected Resolution By: {new Date(report.slaDeadline).toLocaleString()}
+                    </Text>
+                </View>
+            )}
+
             <View style={styles.timelineContainer}>
                 <Text style={styles.timelineTitle}>Tracking History</Text>
                 {report.statusHistory.map((item, index) => (
@@ -73,8 +80,7 @@ const ReportDetailsScreen = ({ route }) => {
                 ))}
             </View>
 
-            {/* --- NEW: Proof of Resolution Section --- */}
-            {/* This block only renders if the report is Resolved and has a proof image */}
+            {/* Proof of Resolution Section */}
             {report.status === 'Resolved' && report.resolvedImageUrl && (
                 <View style={styles.resolutionContainer}>
                     <Text style={styles.resolutionTitle}>Proof of Resolution</Text>
@@ -97,6 +103,24 @@ const styles = StyleSheet.create({
     mainContent: { padding: 16 },
     title: { fontSize: 24, fontWeight: 'bold' },
     description: { fontSize: 16, marginTop: 8, color: 'gray', lineHeight: 22 },
+    
+    // Styles for the SLA display
+    slaContainer: {
+        backgroundColor: '#e7f3fe',
+        borderRadius: 8,
+        padding: 12,
+        marginHorizontal: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#bde0fe',
+    },
+    slaText: {
+        fontSize: 15,
+        color: '#0c5460',
+        textAlign: 'center',
+        fontWeight: '500',
+    },
+
     timelineContainer: { padding: 16, borderTopWidth: 1, borderTopColor: '#eee' },
     timelineTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20 },
     timelineItem: { flexDirection: 'row', marginBottom: 20 },
@@ -106,19 +130,19 @@ const styles = StyleSheet.create({
     timelineTimestamp: { fontSize: 14, color: 'gray' },
     timelineNotes: { fontSize: 14, color: '#555', fontStyle: 'italic', marginTop: 4 },
 
-    // --- NEW STYLES for the resolution section ---
+    // Styles for the resolution section
     resolutionContainer: {
         padding: 16,
         marginTop: 10,
         borderTopWidth: 8,
-        borderTopColor: '#eaf5e9', // A light green separator
+        borderTopColor: '#eaf5e9',
         backgroundColor: '#f9f9f9',
     },
     resolutionTitle: {
         fontSize: 20,
         fontWeight: 'bold',
         marginBottom: 12,
-        color: '#2e7d32', // A darker green color
+        color: '#2e7d32',
     },
     resolutionImage: {
         width: '100%',

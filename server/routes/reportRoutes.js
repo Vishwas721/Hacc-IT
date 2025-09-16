@@ -38,29 +38,44 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
         let urgency_score = 1;
         let departmentId = null;
 
+                const originalDescription = req.body.description; // The text from the user in any language
+        let englishDescription = originalDescription; // Default to original if translation fails
+
+        // --- START: NEW TRANSLATION + ANALYSIS LOGIC ---
         if (process.env.GEMINI_API_KEY) {
             try {
-                const departments = await Department.findAll({ attributes: ['id', 'name'] });
-                const departmentNames = departments.map(d => d.name).join("', '");
-
                 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
                 const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-                const prompt = `
-                    Analyze the following citizen report: "${description}".
-                    Return a single, clean JSON object with three keys:
+
+                // STEP 1: Translate the description to English first
+                const translationPrompt = `Translate the following text to English: "${originalDescription}"`;
+                const translationResult = await model.generateContent(translationPrompt);
+                englishDescription = translationResult.response.text().trim();
+
+                console.log(`Translated "${originalDescription}" to "${englishDescription}"`);
+
+                // STEP 2: Now, use the English description for analysis (your existing logic)
+                const departments = await Department.findAll({ attributes: ['id', 'name'] });
+                const departmentNames = departments.map(d => d.name).join("', '");
+                
+                const analysisPrompt = `
+                    Analyze the following citizen report: "${englishDescription}".
+                    Return a single, clean JSON object with four keys:
                     1. "category": Choose one from 'Pothole', 'Streetlight', 'Garbage', 'Other'.
                     2. "urgency_score": A number from 1 (low) to 5 (high).
-                    3. "department": Assign this report to the most relevant department. Choose exactly one from the following list: ['${departmentNames}'].
+                    3. "department": Assign this report to the most relevant department. Choose exactly one from: ['${departmentNames}'].
+                    4. "priority": Choose one from 'High', 'Medium', 'Low' based on the potential impact, danger, or public inconvenience described.
                 `;
-
-                const result = await model.generateContent(prompt);
-                const responseText = result.response.text();
+                
+                const analysisResult = await model.generateContent(analysisPrompt);
+                const responseText = analysisResult.response.text();
                 const cleanedText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
                 const aiResponse = JSON.parse(cleanedText);
 
+                // Assign category, urgency, and departmentId from the analysis
                 category = aiResponse.category || 'Other';
                 urgency_score = aiResponse.urgency_score || 1;
-
+                 const priority = aiResponse.priority || 'Medium';
                 if (aiResponse.department) {
                     const assignedDept = departments.find(d => d.name === aiResponse.department);
                     if (assignedDept) {
@@ -100,13 +115,16 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
         const location = { type: 'Point', coordinates: [longitude, latitude] };
 
         const newReport = await Report.create({
-            description,
+            description: englishDescription, // The translated English text
+            originalDescription: originalDescription, // The user's original text
             imageUrl: cloudinaryResponse.secure_url,
+            location,
             location,
             UserId: loggedInUserId,
             category,
             urgency_score,
             status: 'Submitted',
+            priority: priority,
             statusHistory: initialHistory,
             DepartmentId: departmentId,
         });
@@ -193,6 +211,37 @@ router.put('/:id/status', [protect, deptAdminOnly, upload.single('resolvedImage'
     } catch (error) {
         console.error("Error updating status:", error);
         res.status(500).json({ error: 'Failed to update status.' });
+    }
+});
+
+// In server/routes/reportRoutes.js, after your other PUT routes
+
+// NEW ROUTE 3: For Municipal Admin to set an SLA deadline
+router.put('/:id/sla', [protect, municipalAdminOnly], async (req, res) => {
+    try {
+        const { deadline } = req.body; // Expecting a full ISO date string
+        const report = await Report.findByPk(req.params.id);
+
+        if (!report) return res.status(404).json({ error: 'Report not found.' });
+
+        report.slaDeadline = deadline;
+
+        // Add a history entry for the SLA
+        const newHistoryEntry = {
+            status: report.status,
+            timestamp: new Date(),
+            notes: `SLA deadline set to ${new Date(deadline).toLocaleString()}.`
+        };
+        report.statusHistory = [...(report.statusHistory || []), newHistoryEntry];
+        
+        await report.save();
+        
+        req.io.emit('report-updated', report.toJSON());
+        res.status(200).json(report);
+
+    } catch (error) {
+        console.error("Error setting SLA:", error);
+        res.status(500).json({ error: 'Failed to set SLA.' });
     }
 });
 

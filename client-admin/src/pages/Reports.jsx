@@ -8,6 +8,10 @@ import styles from './Reports.module.css';
 import api from '../api/api';
 import { toast } from 'react-toastify';
 
+const PriorityBadge = ({ priority }) => {
+    const variantMap = { 'High': 'danger', 'Medium': 'warning', 'Low': 'success' };
+    return <Badge bg={variantMap[priority] || 'secondary'} className={styles.statusBadge}>{priority}</Badge>;
+};
 
 const StatusBadge = ({ status }) => {
     const variant = { Pending: 'warning', 'In Progress': 'primary', Resolved: 'success' }[status];
@@ -38,6 +42,7 @@ const Reports = () => {
     const columns = useMemo(() => [
         { header: 'Description', accessorKey: 'description' },
         { header: 'Category', accessorKey: 'category' },
+        { header: 'Priority', accessorKey: 'priority', cell: info => <PriorityBadge priority={info.getValue()} /> }, // <-- ADD THIS COLUMN
         { header: 'Status', accessorKey: 'status', cell: info => <StatusBadge status={info.getValue()} /> },
         { header: 'Reported On', accessorKey: 'createdAt', cell: info => new Date(info.getValue()).toLocaleDateString() },
         { header: 'Actions', id: 'actions', cell: ({ row }) => (

@@ -26,7 +26,7 @@ const ReportDetails = () => {
     const { fetchDashboardStats } = useReports();
     const { id } = useParams();
     const navigate = useNavigate();
-    
+    const [slaHours, setSlaHours] = useState(''); 
     // State hooks
     const [report, setReport] = useState(null);
     const [departments, setDepartments] = useState([]);
@@ -93,6 +93,23 @@ const ReportDetails = () => {
         }
     };
 
+    const handleSetSla = async () => {
+        if (!slaHours || isNaN(slaHours) || slaHours <= 0) {
+            return toast.error("Please enter a valid number of hours.");
+        }
+        const deadline = new Date();
+        deadline.setHours(deadline.getHours() + parseInt(slaHours));
+
+        try {
+            await api.put(`/reports/${report.id}/sla`, { deadline: deadline.toISOString() });
+            toast.success("SLA has been set!");
+            setSlaHours('');
+            fetchReportAndDepartments(); // Refresh the data
+        } catch (error) {
+            toast.error("Failed to set SLA.");
+        }
+    };
+
     if (!report) {
         return <Spinner animation="border" className="d-block mx-auto mt-5" />;
     }
@@ -135,8 +152,7 @@ const ReportDetails = () => {
                         <Card className={styles.actionsCard}>
                             <Card.Body className="p-4">
                                 <h5 className={styles.cardTitle}>Admin Actions</h5>
-                                
-                                {/* ONLY Municipal Admins can assign/re-assign departments */}
+                                {/* The re-assignment dropdown for municipal-admin is already here, perfect for this feature! */}
                                 {user.role === 'municipal-admin' && (
                                     <Form.Group controlId="deptAssign" className="mb-3">
                                         <Form.Label className={styles.detailLabel}>Assign to Department</Form.Label>
@@ -169,6 +185,33 @@ const ReportDetails = () => {
                                         )}
                                     </>
                                 )}
+                            </Card.Body>
+                        </Card>
+                    )}
+
+                     {/* 3. Add the new SLA Management Card */}
+                    {user && user.role === 'municipal-admin' && (
+                        <Card className={styles.actionsCard}>
+                            <Card.Body className="p-4">
+                                <h5 className={styles.cardTitle}>SLA Management</h5>
+                                {report.slaDeadline && (
+                                    <div className='mb-3'>
+                                        <span className={styles.detailLabel}>Current Deadline</span>
+                                        <p className={styles.detailValue}>{new Date(report.slaDeadline).toLocaleString()}</p>
+                                    </div>
+                                )}
+                                <Form.Group controlId="slaSet" className="mb-3">
+                                    <Form.Label className={styles.detailLabel}>Set Deadline (in hours from now)</Form.Label>
+                                    <div className="d-flex">
+                                        <Form.Control 
+                                            type="number" 
+                                            placeholder="e.g., 48" 
+                                            value={slaHours}
+                                            onChange={(e) => setSlaHours(e.target.value)}
+                                        />
+                                        <Button variant="info" onClick={handleSetSla} className="ms-2">Set</Button>
+                                    </div>
+                                </Form.Group>
                             </Card.Body>
                         </Card>
                     )}
