@@ -10,15 +10,19 @@ const router = express.Router();
 router.get('/', [protect, municipalAdminOnly], async (req, res) => {
     try {
         const users = await User.findAll({
-            // THIS IS THE NEW LOGIC:
-            // It gets all users where the role is NOT 'citizen'
             where: {
                 role: {
                     [Op.ne]: 'citizen'
                 }
             },
             attributes: { exclude: ['password'] },
-            include: [Department],
+            // --- THIS IS THE CRITICAL FIX ---
+            // 'required: false' changes the query to a LEFT JOIN,
+            // which includes users even if their DepartmentId is NULL.
+            include: [{
+                model: Department,
+                required: false
+            }],
             order: [['createdAt', 'DESC']],
         });
         res.json(users);

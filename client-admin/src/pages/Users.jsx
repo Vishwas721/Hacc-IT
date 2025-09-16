@@ -1,4 +1,5 @@
 // File: src/pages/Users.jsx
+// File: src/pages/Users.jsx
 import React, { useState, useMemo, useEffect } from 'react';
 import { Container, Table, Button, Badge, Modal, Form, Spinner } from 'react-bootstrap';
 import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender } from '@tanstack/react-table';
@@ -8,7 +9,13 @@ import api from '../api/api';
 import { toast } from 'react-toastify';
 
 const RoleBadge = ({ role }) => {
-    const variant = { 'super-admin': 'danger', 'dept-admin': 'info', 'staff': 'secondary' }[role];
+    const variantMap = { 
+        'super-admin': 'danger', 
+        'municipal-admin': 'success',
+        'dept-admin': 'info', 
+        'staff': 'secondary' 
+    };
+    const variant = variantMap[role] || 'dark';
     return <Badge bg={variant} className={styles.roleBadge}>{role.replace('-', ' ')}</Badge>;
 };
 
@@ -46,7 +53,6 @@ const Users = () => {
         setSelectedUser(null);
     };
     
-    // Function for the "Add New User" button
     const handleAddNewUser = () => {
         setIsEditing(false);
         setSelectedUser({ username: '', password: '', role: 'staff', DepartmentId: null });
@@ -55,25 +61,24 @@ const Users = () => {
     
     const handleEditUser = (user) => {
         setIsEditing(true);
-        setSelectedUser({ ...user, DepartmentId: user.DepartmentId || null });
+        setSelectedUser({ ...user, DepartmentId: user.Department?.id || null });
         setShowModal(true);
     };
 
     const handleStateChange = (e) => {
-        setSelectedUser({ ...selectedUser, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setSelectedUser(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSaveChanges = async () => {
         try {
             if (isEditing) {
-                // Update existing user's role and department
                 await api.put(`/users/${selectedUser.id}/role`, {
                     role: selectedUser.role,
                     departmentId: selectedUser.DepartmentId
                 });
                 toast.success(`User ${selectedUser.username} updated!`);
             } else {
-                // Create new user
                 await api.post('/auth/register', {
                     username: selectedUser.username,
                     password: selectedUser.password,
@@ -85,7 +90,7 @@ const Users = () => {
             fetchData();
             handleCloseModal();
         } catch (error) {
-            toast.error(error.response?.data?.details || 'An error occurred.');
+            toast.error(error.response?.data?.details || error.response?.data?.error || 'An error occurred.');
         }
     };
     
@@ -93,26 +98,54 @@ const Users = () => {
         { header: 'Username', accessorKey: 'username' },
         { header: 'Role', accessorKey: 'role', cell: info => <RoleBadge role={info.getValue()} /> },
         { header: 'Department', accessorFn: row => row.Department ? row.Department.name : 'N/A' },
-        { header: 'Actions', id: 'actions', cell: ({ row }) => (
-            currentUser && row.original.id !== currentUser.id && (
-                <Button variant="outline-secondary" size="sm" onClick={() => handleEditUser(row.original)}>
-                    Edit User
-                </Button>
-            )
-        )},
+        { 
+            header: 'Actions', 
+            id: 'actions', 
+            cell: ({ row }) => (
+            currentUser && 
+                row.original.id !== currentUser.id && // Can't edit yourself
+                row.original.role !== 'super-admin' &&  // <-- AND can't edit a super-admin
+                (
+                    <Button variant="outline-secondary" size="sm" onClick={() => handleEditUser(row.original)}>
+                        Edit User
+                    </Button>
+                )
+            )},
     ], [currentUser]);
 
     const table = useReactTable({ data: users, columns, getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel() });
 
     if (loading) return <Spinner animation="border" />;
-
     return (
         <Container fluid>
             <div className={styles.header}>
                 <h1 className={styles.pageTitle}>User Management</h1>
                 <Button variant="primary" onClick={handleAddNewUser}>Add New User</Button>
             </div>
-            <Table hover responsive className={styles.table}>{/* ... table JSX ... */}</Table>
+            
+            {/* --- THIS IS THE CORRECTED PART --- */}
+            <Table hover responsive className={styles.table}>
+                <thead>
+                    {table.getHeaderGroups().map(headerGroup => (
+                        <tr key={headerGroup.id}>
+                            {headerGroup.headers.map(header => (
+                                <th key={header.id} onClick={header.column.getToggleSortingHandler()}>
+                                    {flexRender(header.column.columnDef.header, header.getContext())}
+                                </th>
+                            ))}
+                        </tr>
+                    ))}
+                </thead>
+                <tbody>
+                    {table.getRowModel().rows.map(row => (
+                        <tr key={row.id}>
+                            {row.getVisibleCells().map(cell => (
+                                <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                            ))}
+                        </tr>
+                    ))}
+                </tbody>
+            </Table>
 
             <Modal show={showModal} onHide={handleCloseModal} centered>
                 <Modal.Header closeButton>
