@@ -8,7 +8,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 import styles from './Dashboard.module.css';
 import api from '../api/api';
 import { useReports } from '../hooks/useReports'; // Corrected import
-
+import Leaderboard from '../components/Leaderboard';
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const chartOptions = { 
@@ -103,20 +103,26 @@ const Dashboard = () => {
           </motion.div>
         </Col>
       </Row>
-      <Row>
-        <Col>
-          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-            <Card className={`${styles.customCard}`}>
-              <Card.Body className="p-4">
-                <Card.Title className={styles.chartCardTitle}>Reports by Category</Card.Title>
-                <div style={{ height: '350px' }}>
-                  <Bar data={chartData} options={chartOptions} />
-                </div>
-              </Card.Body>
-            </Card>
-          </motion.div>
-        </Col>
-      </Row>
+
+                  <Row>
+                <Col lg={8} className="mb-4">
+                    <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                        <Card className={`${styles.customCard} h-100`}>
+                            <Card.Body className="p-4">
+                                <Card.Title className={styles.chartCardTitle}>Reports by Category</Card.Title>
+                                <div style={{ height: '350px' }}>
+                                    <Bar data={chartData} options={chartOptions} />
+                                </div>
+                            </Card.Body>
+                        </Card>
+                    </motion.div>
+                </Col>
+                <Col lg={4} className="mb-4">
+                    <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+                        <Leaderboard />
+                    </motion.div>
+                </Col>
+            </Row>
     </Container>
   );
 };

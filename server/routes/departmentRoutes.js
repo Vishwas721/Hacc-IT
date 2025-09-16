@@ -52,4 +52,16 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+router.get('/leaderboard', async (req, res) => {
+    try {
+        const leaderboard = await Department.findAll({
+            order: [['points', 'DESC']],
+            limit: 10 // Get the top 10 departments
+        });
+        res.json(leaderboard);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch leaderboard data.' });
+    }
+});
+
 module.exports = router;

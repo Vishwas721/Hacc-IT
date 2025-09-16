@@ -188,6 +188,26 @@ router.put('/:id/status', [protect, deptAdminOnly, upload.single('resolvedImage'
 
         if (!report) return res.status(404).json({ error: 'Report not found.' });
 
+        // --- START: NEW GAMIFICATION LOGIC ---
+        if (status === 'Resolved' && report.status !== 'Resolved') {
+            let pointsToAward = 50; // Base points for resolution
+
+            // Check for SLA bonus
+            if (report.slaDeadline && new Date() < new Date(report.slaDeadline)) {
+                pointsToAward += 25; // Add bonus points
+                console.log(`SLA BONUS: Awarding +25 extra points to Dept ID ${report.DepartmentId}`);
+            }
+            
+            // Award the points to the department
+            if (report.DepartmentId) {
+                await Department.increment('points', {
+                    by: pointsToAward,
+                    where: { id: report.DepartmentId }
+                });
+            }
+        }
+        // --- END: NEW GAMIFICATION LOGIC ---
+
         report.status = status;
         let notes = `Status updated to "${status}".`;
 
@@ -200,7 +220,7 @@ router.put('/:id/status', [protect, deptAdminOnly, upload.single('resolvedImage'
             notes = resolvedNotes || 'Issue marked as resolved.';
         }
 
-        const newHistoryEntry = { status, timestamp: new Date(), notes: notes };
+       const newHistoryEntry = { status, timestamp: new Date(), notes: notes };
         report.statusHistory = [...report.statusHistory, newHistoryEntry];
 
         await report.save();

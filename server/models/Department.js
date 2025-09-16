@@ -12,6 +12,11 @@ module.exports = (sequelize, DataTypes) => {
   }
   Department.init({
     name: { type: DataTypes.STRING, allowNull: false, unique: true },
+    points: { // <-- ADD THIS FIELD
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
   }, {
     sequelize,
     modelName: 'Department',
