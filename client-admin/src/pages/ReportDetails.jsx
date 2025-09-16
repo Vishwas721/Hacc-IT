@@ -10,7 +10,6 @@ import { useReports } from '../hooks/useReports';
 import MapResizeComponent from '../components/MapResizeComponent';
 import { useAuth } from '../context/AuthContext';
 
-// Helper component to display the status with a colored badge
 const StatusBadge = ({ status }) => {
     const variantMap = {
         'Submitted': 'secondary',
@@ -21,12 +20,17 @@ const StatusBadge = ({ status }) => {
     return <Badge bg={variantMap[status] || 'dark'}>{status}</Badge>;
 };
 
+const PriorityBadge = ({ priority }) => {
+    const variantMap = { 'High': 'danger', 'Medium': 'warning', 'Low': 'success' };
+    return <Badge bg={variantMap[priority] || 'secondary'}>{priority}</Badge>;
+};
+
 const ReportDetails = () => {
     const { user } = useAuth();
     const { fetchDashboardStats } = useReports();
     const { id } = useParams();
     const navigate = useNavigate();
-    const [slaHours, setSlaHours] = useState(''); 
+    
     // State hooks
     const [report, setReport] = useState(null);
     const [departments, setDepartments] = useState([]);
@@ -34,8 +38,8 @@ const ReportDetails = () => {
     const [showResolveModal, setShowResolveModal] = useState(false);
     const [resolvedNotes, setResolvedNotes] = useState('');
     const [resolvedImage, setResolvedImage] = useState(null);
+    const [slaHours, setSlaHours] = useState('');
 
-    // Fetch report and departments data
     const fetchReportAndDepartments = useCallback(async () => {
         try {
             const [reportRes, deptsRes] = await Promise.all([
@@ -47,7 +51,7 @@ const ReportDetails = () => {
             setAssignedDept(reportRes.data.DepartmentId || '');
         } catch (error) {
             toast.error("Could not load report details.");
-            navigate('/reports'); // Go back if report can't be loaded
+            navigate('/reports');
         }
     }, [id, navigate]);
 
@@ -55,7 +59,6 @@ const ReportDetails = () => {
         fetchReportAndDepartments();
     }, [fetchReportAndDepartments]);
 
-    // Handle assigning a department (Municipal Admin action)
     const handleDepartmentAssign = async () => {
         try {
             await api.put(`/reports/${report.id}/assign`, { departmentId: assignedDept });
@@ -66,7 +69,6 @@ const ReportDetails = () => {
         }
     };
 
-    // Handle updating report status (Dept Admin action)
     const handleUpdateStatus = async (newStatus) => {
         const formData = new FormData();
         formData.append('status', newStatus);
@@ -87,7 +89,7 @@ const ReportDetails = () => {
             toast.success(`Report status updated to "${newStatus}"!`);
             fetchDashboardStats();
             setShowResolveModal(false);
-            fetchReportAndDepartments(); // Refetch to show updated status/details
+            fetchReportAndDepartments();
         } catch (error) {
             toast.error(error.response?.data?.error || "Failed to update report.");
         }
@@ -104,7 +106,7 @@ const ReportDetails = () => {
             await api.put(`/reports/${report.id}/sla`, { deadline: deadline.toISOString() });
             toast.success("SLA has been set!");
             setSlaHours('');
-            fetchReportAndDepartments(); // Refresh the data
+            fetchReportAndDepartments();
         } catch (error) {
             toast.error("Failed to set SLA.");
         }
@@ -140,6 +142,17 @@ const ReportDetails = () => {
                         <Card.Body className="p-4">
                             <h5 className={styles.cardTitle}>Issue Details</h5>
                             <div className={styles.detailItem}><span className={styles.detailLabel}>Status</span><div className={styles.detailValue}><StatusBadge status={report.status} /></div></div>
+                            
+                            {report.slaDeadline && (
+                                <div className={styles.detailItem}>
+                                    <span className={styles.detailLabel}>SLA Deadline</span>
+                                    <p className={styles.detailValue} style={{ color: new Date() > new Date(report.slaDeadline) ? '#dc3545' : 'inherit' }}>
+                                        {new Date(report.slaDeadline).toLocaleString()}
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className={styles.detailItem}><span className={styles.detailLabel}>Priority</span><div className={styles.detailValue}><PriorityBadge priority={report.priority} /></div></div>
                             <div className={styles.detailItem}><span className={styles.detailLabel}>Assigned Department</span><p className={styles.detailValue}>{report.Department ? report.Department.name : 'Unassigned'}</p></div>
                             <div className={styles.detailItem}><span className={styles.detailLabel}>Category</span><p className={styles.detailValue}>{report.category}</p></div>
                             <div className={styles.detailItem}><span className={styles.detailLabel}>Description</span><p className={styles.detailValue}>{report.description}</p></div>
@@ -147,12 +160,10 @@ const ReportDetails = () => {
                         </Card.Body>
                     </Card>
 
-                    {/* ROLE-BASED ACTIONS CARD */}
                     {user && (user.role === 'municipal-admin' || user.role === 'dept-admin') && (
                         <Card className={styles.actionsCard}>
                             <Card.Body className="p-4">
                                 <h5 className={styles.cardTitle}>Admin Actions</h5>
-                                {/* The re-assignment dropdown for municipal-admin is already here, perfect for this feature! */}
                                 {user.role === 'municipal-admin' && (
                                     <Form.Group controlId="deptAssign" className="mb-3">
                                         <Form.Label className={styles.detailLabel}>Assign to Department</Form.Label>
@@ -167,17 +178,13 @@ const ReportDetails = () => {
                                         </div>
                                     </Form.Group>
                                 )}
-
-                                {/* ONLY Dept Admins can change the status */}
                                 {user.role === 'dept-admin' && (
                                     <>
-                                        {/* --- THIS IS THE FINAL CORRECTED LOGIC --- */}
                                         {(report.status === 'Submitted' || report.status === 'Pending' || report.status === 'Assigned') && (
                                             <Button variant="info" className="w-100 mb-2" onClick={() => handleUpdateStatus('In Progress')}>
                                                 Mark as "In Progress"
                                             </Button>
                                         )}
-                                        
                                         {report.status !== 'Resolved' && (
                                             <Button variant="success" className="w-100" onClick={() => setShowResolveModal(true)}>
                                                 Mark as "Resolved"
@@ -189,19 +196,12 @@ const ReportDetails = () => {
                         </Card>
                     )}
 
-                     {/* 3. Add the new SLA Management Card */}
                     {user && user.role === 'municipal-admin' && (
                         <Card className={styles.actionsCard}>
                             <Card.Body className="p-4">
                                 <h5 className={styles.cardTitle}>SLA Management</h5>
-                                {report.slaDeadline && (
-                                    <div className='mb-3'>
-                                        <span className={styles.detailLabel}>Current Deadline</span>
-                                        <p className={styles.detailValue}>{new Date(report.slaDeadline).toLocaleString()}</p>
-                                    </div>
-                                )}
                                 <Form.Group controlId="slaSet" className="mb-3">
-                                    <Form.Label className={styles.detailLabel}>Set Deadline (in hours from now)</Form.Label>
+                                    <Form.Label className={styles.detailLabel}>Set/Update Deadline (in hours from now)</Form.Label>
                                     <div className="d-flex">
                                         <Form.Control 
                                             type="number" 
@@ -216,21 +216,19 @@ const ReportDetails = () => {
                         </Card>
                     )}
                     
-                    {/* This section for showing resolution proof is visible to everyone */}
                     {report.status === 'Resolved' && report.resolvedImageUrl && (
                         <Card className={styles.detailsCard}>
                              <Card.Body className="p-4">
-                                 <h5 className={styles.cardTitle}>Proof of Resolution</h5>
-                                 <Image src={report.resolvedImageUrl} fluid rounded className="mt-2" />
-                                 {report.resolvedNotes && <p className="mt-2 fst-italic">Notes: {report.resolvedNotes}</p>}
-                             </Card.Body>
+                                <h5 className={styles.cardTitle}>Proof of Resolution</h5>
+                                <Image src={report.resolvedImageUrl} fluid rounded className="mt-2" />
+                                {report.resolvedNotes && <p className="mt-2 fst-italic">Notes: {report.resolvedNotes}</p>}
+                            </Card.Body>
                         </Card>
                     )}
                 </Col>
             </Row>
 
-            {/* Modal for "Resolved" action */}
-             <Modal show={showResolveModal} onHide={() => setShowResolveModal(false)} centered>
+            <Modal show={showResolveModal} onHide={() => setShowResolveModal(false)} centered>
                 <Modal.Header closeButton><Modal.Title>Resolve Issue #{report.id}</Modal.Title></Modal.Header>
                 <Modal.Body>
                     <Form>
