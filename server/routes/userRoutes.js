@@ -1,4 +1,5 @@
 const express = require('express');
+const { Op } = require('sequelize');
 const { User, Department } = require('../models');
 // --- FIX: Import the new, correct middleware ---
 const { protect, municipalAdminOnly } = require('../middleware/authMiddleware'); 
@@ -9,12 +10,20 @@ const router = express.Router();
 router.get('/', [protect, municipalAdminOnly], async (req, res) => {
     try {
         const users = await User.findAll({
+            // THIS IS THE NEW LOGIC:
+            // It gets all users where the role is NOT 'citizen'
+            where: {
+                role: {
+                    [Op.ne]: 'citizen'
+                }
+            },
             attributes: { exclude: ['password'] },
             include: [Department],
             order: [['createdAt', 'DESC']],
         });
         res.json(users);
     } catch (error) {
+        console.error("Failed to fetch users:", error);
         res.status(500).json({ error: 'Failed to fetch users.' });
     }
 });

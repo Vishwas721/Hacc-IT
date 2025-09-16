@@ -1,7 +1,7 @@
 // File: server/hashPassword.js
 const bcrypt = require('bcryptjs');
 
-const plainTextPassword = 'password'; // <-- Put your desired password here
+const plainTextPassword = '1234'; // <-- Put your desired password here
 
 bcrypt.hash(plainTextPassword, 10, (err, hash) => {
     if (err) {

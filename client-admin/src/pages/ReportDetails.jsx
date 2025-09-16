@@ -132,10 +132,11 @@ const ReportDetails = () => {
 
                     {/* --- NEW: ROLE-BASED ACTIONS CARD --- */}
                     {/* This card only shows for the two operational admin roles */}
-                    {user && (user.role === 'municipal-admin' || user.role === 'dept-admin') && (
+                     {user && (user.role === 'municipal-admin' || user.role === 'dept-admin') && (
                         <Card className={styles.actionsCard}>
                             <Card.Body className="p-4">
                                 <h5 className={styles.cardTitle}>Admin Actions</h5>
+                                
                                 
                                 {/* ONLY Municipal Admins can assign/re-assign departments */}
                                 {user.role === 'municipal-admin' && (
@@ -162,6 +163,7 @@ const ReportDetails = () => {
                                             </Button>
                                         )}
                                         {report.status !== 'Resolved' && (
+                                            // THIS IS THE CORRECTED BUTTON
                                             <Button variant="success" className="w-100" onClick={() => setShowResolveModal(true)}>
                                                 Mark as "Resolved"
                                             </Button>
@@ -186,8 +188,24 @@ const ReportDetails = () => {
             </Row>
 
             {/* Modal for "Resolved" action - no changes needed here */}
-            <Modal show={showResolveModal} onHide={() => setShowResolveModal(false)} centered>
-                {/* ... your existing modal code ... */}
+             <Modal show={showResolveModal} onHide={() => setShowResolveModal(false)} centered>
+                <Modal.Header closeButton><Modal.Title>Resolve Issue #{report.id}</Modal.Title></Modal.Header>
+                <Modal.Body>
+                    <Form>
+                        <Form.Group controlId="resolvedNotes" className="mb-3">
+                            <Form.Label>Resolution Notes (Optional)</Form.Label>
+                            <Form.Control as="textarea" rows={3} value={resolvedNotes} onChange={(e) => setResolvedNotes(e.target.value)} />
+                        </Form.Group>
+                        <Form.Group controlId="resolvedImage">
+                            <Form.Label>Upload Proof Image (Required)</Form.Label>
+                            <Form.Control type="file" onChange={(e) => setResolvedImage(e.target.files[0])} />
+                        </Form.Group>
+                    </Form>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowResolveModal(false)}>Cancel</Button>
+                    <Button variant="primary" onClick={() => handleUpdateStatus('Resolved')}>Confirm Resolution</Button>
+                </Modal.Footer>
             </Modal>
         </Container>
     );

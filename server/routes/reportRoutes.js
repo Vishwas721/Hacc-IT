@@ -203,22 +203,43 @@ router.get('/', [protect, anyAdmin], async (req, res) => {
 });
 
 // GET /api/reports/stats - Get report statistics
+// In server/routes/reportRoutes.js
+
+// GET /api/reports/stats - Get report statistics (now role-aware)
 router.get('/stats', [protect, anyAdmin], async (req, res) => { 
     try {
-        const total = await Report.count();
-        const pending = await Report.count({ where: { status: 'Submitted' } });
-        const resolved = await Report.count({ where: { status: 'Resolved' } });
-        const inProgress = await Report.count({ where: { status: 'In Progress' } });
+        // Start with an empty where clause
+        let whereClause = {};
+
+        // If the user is a dept-admin, scope the query to their department
+        if (req.user.role === 'dept-admin' && req.user.DepartmentId) {
+            whereClause.DepartmentId = req.user.DepartmentId;
+        }
+
+        const total = await Report.count({ where: whereClause });
+        const pending = await Report.count({ where: { ...whereClause, status: 'Submitted' } });
+        const resolved = await Report.count({ where: { ...whereClause, status: 'Resolved' } });
+        const inProgress = await Report.count({ where: { ...whereClause, status: 'In Progress' } });
+        
         res.json({ total, pending, resolved, inProgress });
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch report stats.' });
     }
 });
 
-// GET /api/reports/by-category - Get reports grouped by category for the chart
+// GET /api/reports/by-category - Get reports grouped by category (now role-aware)
 router.get('/by-category', [protect, anyAdmin], async (req, res) => {
     try {
+        // Start with an empty where clause
+        let whereClause = {};
+
+        // If the user is a dept-admin, scope the query to their department
+        if (req.user.role === 'dept-admin' && req.user.DepartmentId) {
+            whereClause.DepartmentId = req.user.DepartmentId;
+        }
+
         const categoryData = await Report.findAll({
+            where: whereClause, // Apply the filter here
             attributes: ['category', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
             group: ['category'],
             order: [[sequelize.fn('COUNT', sequelize.col('id')), 'DESC']]
