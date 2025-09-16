@@ -4,7 +4,7 @@ const cloudinary = require('cloudinary').v2;
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { Op, sequelize } = require('sequelize');
 const { Report, User, Department } = require('../models');
-const { protect, anyAdmin, municipalAdminOnly, deptAdminOnly } = require('../middleware/authMiddleware'); // Assuming you updated your middleware
+const { protect, anyAdmin, municipalAdminOnly, deptAdminOnly } = require('../middleware/authMiddleware');// Assuming you updated your middleware
 
 const router = express.Router();
 
@@ -122,49 +122,68 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
 
 
 // PUT /api/reports/:id - Update a report's status or department
-router.put('/:id', [protect, upload.single('resolvedImage')], async (req, res) => {
+// In server/routes/reportRoutes.js
+
+// NEW ROUTE 1: For Municipal Admin to assign/re-assign a department (Corrected Version)
+router.put('/:id/assign', [protect, municipalAdminOnly], async (req, res) => {
     try {
-        const { status, resolvedNotes, departmentId } = req.body;
-        const report = await Report.findByPk(req.params.id, { include: User });
+        const { departmentId } = req.body;
+        console.log(`Assigning report ${req.params.id} to department ${departmentId}`); // For debugging
+
+        const report = await Report.findByPk(req.params.id);
+        if (!report) return res.status(404).json({ error: 'Report not found.' });
+
+        const dept = await Department.findByPk(departmentId);
+        if (!dept) return res.status(404).json({ error: 'Department not found.' });
+        
+        // --- THIS IS THE ROBUST FIX ---
+        report.DepartmentId = departmentId;
+        report.status = 'Assigned'; // 1. Explicitly set the main status
+
+        // 2. Safely handle the statusHistory array
+        const currentHistory = report.statusHistory || []; // Ensure it's an array, even if it's null
+        const newHistoryEntry = {
+            status: 'Assigned',
+            timestamp: new Date(),
+            notes: `Report assigned to ${dept.name} department.`
+        };
+
+        // 3. Create a new array to ensure Sequelize detects the change
+        report.statusHistory = [...currentHistory, newHistoryEntry];
+        
+        await report.save();
+        
+        console.log('Report saved successfully with new status:', report.status); // For debugging
+        req.io.emit('report-updated', report.toJSON());
+        res.status(200).json(report);
+
+    } catch (error) {
+        console.error("Error assigning department:", error);
+        res.status(500).json({ error: 'Failed to assign department.' });
+    }
+});
+// NEW ROUTE 2: For Department Admin to update a report's status
+router.put('/:id/status', [protect, deptAdminOnly, upload.single('resolvedImage')], async (req, res) => {
+    try {
+        const { status, resolvedNotes } = req.body;
+        const report = await Report.findByPk(req.params.id);
 
         if (!report) return res.status(404).json({ error: 'Report not found.' });
 
-        let historyModified = false;
+        report.status = status;
+        let notes = `Status updated to "${status}".`;
 
-        if (departmentId && report.DepartmentId !== parseInt(departmentId)) {
-            const dept = await Department.findByPk(departmentId);
-            if(dept) {
-                report.DepartmentId = departmentId;
-                const newHistoryEntry = { 
-                    status: report.status,
-                    timestamp: new Date(), 
-                    notes: `Report assigned to ${dept.name} department by admin.` 
-                };
-                report.statusHistory = [...report.statusHistory, newHistoryEntry];
-                historyModified = true;
-            }
+        if (status === 'Resolved' && req.file) {
+            const b64 = Buffer.from(req.file.buffer).toString("base64");
+            let dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+            const cloudinaryResponse = await cloudinary.uploader.upload(dataURI, { folder: "civic-reports-resolved" });
+            report.resolvedImageUrl = cloudinaryResponse.secure_url;
+            report.resolvedNotes = resolvedNotes;
+            notes = resolvedNotes || 'Issue marked as resolved.';
         }
-        
-        if (status && report.status !== status) {
-            report.status = status;
-            let notes = `Status updated to "${status}".`;
-            
-            if (status === 'Resolved' && req.file) {
-                const b64 = Buffer.from(req.file.buffer).toString("base64");
-                let dataURI = "data:" + req.file.mimetype + ";base64," + b64;
-                const cloudinaryResponse = await cloudinary.uploader.upload(dataURI, { folder: "civic-reports-resolved" });
-                report.resolvedImageUrl = cloudinaryResponse.secure_url;
-                report.resolvedNotes = resolvedNotes;
-                notes = resolvedNotes || 'Issue marked as resolved.';
-            }
 
-            const newHistoryEntry = { status, timestamp: new Date(), notes: notes };
-            
-            if(historyModified) {
-                report.statusHistory.pop();
-            }
-            report.statusHistory = [...report.statusHistory, newHistoryEntry];
-        }
+        const newHistoryEntry = { status, timestamp: new Date(), notes: notes };
+        report.statusHistory = [...report.statusHistory, newHistoryEntry];
 
         await report.save();
         
@@ -172,8 +191,8 @@ router.put('/:id', [protect, upload.single('resolvedImage')], async (req, res) =
         res.status(200).json(report);
 
     } catch (error) {
-        console.error("Error updating report:", error);
-        res.status(500).json({ error: 'Failed to update report.' });
+        console.error("Error updating status:", error);
+        res.status(500).json({ error: 'Failed to update status.' });
     }
 });
 

@@ -1,4 +1,4 @@
-import 'leaflet/dist/leaflet.css'; // <-- CRITICAL: The map fix starts here.
+import 'leaflet/dist/leaflet.css';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Card, Image, Button, Form, Badge, Spinner, Modal } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -14,7 +14,7 @@ import { useAuth } from '../context/AuthContext';
 const StatusBadge = ({ status }) => {
     const variantMap = {
         'Submitted': 'secondary',
-        'Pending': 'warning',
+        'Assigned': 'info',
         'In Progress': 'primary',
         'Resolved': 'success'
     };
@@ -58,9 +58,9 @@ const ReportDetails = () => {
     // Handle assigning a department (Municipal Admin action)
     const handleDepartmentAssign = async () => {
         try {
-            await api.put(`/reports/${report.id}`, { departmentId: assignedDept });
+            await api.put(`/reports/${report.id}/assign`, { departmentId: assignedDept });
             toast.success(`Report assigned successfully!`);
-            fetchReportAndDepartments(); // Refetch to get the latest data
+            fetchReportAndDepartments();
         } catch (error) {
             toast.error(error.response?.data?.error || "Failed to assign department.");
         }
@@ -81,7 +81,7 @@ const ReportDetails = () => {
         }
 
         try {
-            await api.put(`/reports/${report.id}`, formData, {
+            await api.put(`/reports/${report.id}/status`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             toast.success(`Report status updated to "${newStatus}"!`);
@@ -130,13 +130,11 @@ const ReportDetails = () => {
                         </Card.Body>
                     </Card>
 
-                    {/* --- NEW: ROLE-BASED ACTIONS CARD --- */}
-                    {/* This card only shows for the two operational admin roles */}
-                     {user && (user.role === 'municipal-admin' || user.role === 'dept-admin') && (
+                    {/* ROLE-BASED ACTIONS CARD */}
+                    {user && (user.role === 'municipal-admin' || user.role === 'dept-admin') && (
                         <Card className={styles.actionsCard}>
                             <Card.Body className="p-4">
                                 <h5 className={styles.cardTitle}>Admin Actions</h5>
-                                
                                 
                                 {/* ONLY Municipal Admins can assign/re-assign departments */}
                                 {user.role === 'municipal-admin' && (
@@ -157,13 +155,14 @@ const ReportDetails = () => {
                                 {/* ONLY Dept Admins can change the status */}
                                 {user.role === 'dept-admin' && (
                                     <>
-                                        {(report.status === 'Submitted' || report.status === 'Pending') && (
+                                        {/* --- THIS IS THE FINAL CORRECTED LOGIC --- */}
+                                        {(report.status === 'Submitted' || report.status === 'Pending' || report.status === 'Assigned') && (
                                             <Button variant="info" className="w-100 mb-2" onClick={() => handleUpdateStatus('In Progress')}>
                                                 Mark as "In Progress"
                                             </Button>
                                         )}
+                                        
                                         {report.status !== 'Resolved' && (
-                                            // THIS IS THE CORRECTED BUTTON
                                             <Button variant="success" className="w-100" onClick={() => setShowResolveModal(true)}>
                                                 Mark as "Resolved"
                                             </Button>
@@ -178,16 +177,16 @@ const ReportDetails = () => {
                     {report.status === 'Resolved' && report.resolvedImageUrl && (
                         <Card className={styles.detailsCard}>
                              <Card.Body className="p-4">
-                                <h5 className={styles.cardTitle}>Proof of Resolution</h5>
-                                <Image src={report.resolvedImageUrl} fluid rounded className="mt-2" />
-                                {report.resolvedNotes && <p className="mt-2 fst-italic">Notes: {report.resolvedNotes}</p>}
-                            </Card.Body>
+                                 <h5 className={styles.cardTitle}>Proof of Resolution</h5>
+                                 <Image src={report.resolvedImageUrl} fluid rounded className="mt-2" />
+                                 {report.resolvedNotes && <p className="mt-2 fst-italic">Notes: {report.resolvedNotes}</p>}
+                             </Card.Body>
                         </Card>
                     )}
                 </Col>
             </Row>
 
-            {/* Modal for "Resolved" action - no changes needed here */}
+            {/* Modal for "Resolved" action */}
              <Modal show={showResolveModal} onHide={() => setShowResolveModal(false)} centered>
                 <Modal.Header closeButton><Modal.Title>Resolve Issue #{report.id}</Modal.Title></Modal.Header>
                 <Modal.Body>

@@ -27,7 +27,7 @@ const Sidebar = () => {
   return (
     <div className={styles.sidebar}>
       <div className={styles.header}>
-        Civic Admin
+        NagarikOne
       </div>
       <Nav className="flex-column">
         {navItems.map((item) => (
