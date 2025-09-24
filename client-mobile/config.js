@@ -1,2 +1,2 @@
 // File: client-mobile/config.js
-export const API_URL = 'http://192.168.207.38:5000';
+export const API_URL = 'http://10.36.190.38:5000';
