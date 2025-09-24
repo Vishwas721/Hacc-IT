@@ -1,63 +1,63 @@
 import React, { useState } from 'react';
-import { View, TextInput, Button, Text, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
+import { Text, TextInput, Button } from 'react-native-paper';
 import { useAuth } from '../context/AuthContext';
 
-const RegisterScreen = () => {
+const RegisterScreen = ({ navigation }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
     const { register } = useAuth();
 
     const handleRegister = async () => {
+        setLoading(true);
         const result = await register(username, password);
         if (!result.success) {
             Alert.alert('Registration Failed', result.message);
         }
+        // On success, the AuthContext will handle the login and navigation
+        setLoading(false);
     };
 
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Create Account</Text>
-            <TextInput style={styles.input} placeholder="Username" value={username} onChangeText={setUsername} />
-            <TextInput style={styles.input} placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />
-            <Button title="Register" onPress={handleRegister} />
+            <TextInput 
+                label="Username" 
+                value={username} 
+                onChangeText={setUsername} 
+                style={styles.input}
+                mode="outlined"
+            />
+            <TextInput 
+                label="Password" 
+                value={password} 
+                onChangeText={setPassword} 
+                secureTextEntry 
+                style={styles.input}
+                mode="outlined"
+            />
+            <Button 
+                mode="contained" 
+                onPress={handleRegister}
+                style={styles.button}
+                loading={loading}
+                disabled={loading}
+            >
+                Register
+            </Button>
+             <Button onPress={() => navigation.navigate('Login')} disabled={loading}>
+                Already have an account? Login
+            </Button>
         </View>
     );
 };
-
+// Use the same styles as LoginScreen
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  placeholder: {
-    width: 200,
-    height: 200,
-    backgroundColor: '#eee',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  image: {
-    width: 200,
-    height: 200,
-    marginBottom: 20,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 10,
-    width: '100%',
-    marginTop: 20,
-    marginBottom: 20,
-    borderRadius: 5,
-  },
+  container: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: '#fff' },
+  title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 24 },
+  input: { marginBottom: 16 },
+  button: { marginTop: 8, paddingVertical: 8 },
 });
+
 export default RegisterScreen;
