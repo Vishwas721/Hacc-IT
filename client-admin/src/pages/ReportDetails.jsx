@@ -154,7 +154,14 @@ const ReportDetails = () => {
 
                             <div className={styles.detailItem}><span className={styles.detailLabel}>Priority</span><div className={styles.detailValue}><PriorityBadge priority={report.priority} /></div></div>
                             <div className={styles.detailItem}><span className={styles.detailLabel}>Assigned Department</span><p className={styles.detailValue}>{report.Department ? report.Department.name : 'Unassigned'}</p></div>
-                            <div className={styles.detailItem}><span className={styles.detailLabel}>Category</span><p className={styles.detailValue}>{report.category}</p></div>
+                           
+<div className={styles.detailItem}>
+    <span className={styles.detailLabel}>Category</span>
+    <p className={styles.detailValue}>
+        {report.category}
+        {report.isAiVerified && <Badge bg="success" className="ms-2">AI Verified ✅</Badge>}
+    </p>
+</div>
                             <div className={styles.detailItem}><span className={styles.detailLabel}>Description</span><p className={styles.detailValue}>{report.description}</p></div>
                             <div className={styles.detailItem}><span className={styles.detailLabel}>Reported On</span><p className={styles.detailValue}>{new Date(report.createdAt).toLocaleString()}</p></div>
                         </Card.Body>
