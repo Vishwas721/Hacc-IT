@@ -103,7 +103,19 @@ const ReportDetailsScreen = ({ route }) => {
                     </Card.Content>
                 </Card>
             )}
-
+                        {report.status === 'Rejected' && report.rejectionReason && (
+                <Card style={[styles.card, styles.rejectedCard]}>
+                    <Card.Title 
+                        title="Report Rejected"
+                        titleStyle={{color: '#c0392b'}}
+                        left={(props) => <Avatar.Icon {...props} icon="close-circle" color="#c0392b" style={{backgroundColor: 'transparent'}} />}
+                    />
+                    <Card.Content>
+                        <Text style={styles.rejectionReasonTitle}>Reason from Admin:</Text>
+                        <Text style={styles.rejectionReasonText}>"{report.rejectionReason}"</Text>
+                    </Card.Content>
+                </Card>
+            )}
             <Card style={styles.card}>
                 <Card.Title title="Tracking History" />
                 <Card.Content>
@@ -190,6 +202,22 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
         color: '#333',
         paddingBottom: 10,
+    },
+        rejectedCard: {
+        borderColor: '#c0392b',
+        borderWidth: 1,
+        backgroundColor: '#fdecea',
+    },
+    rejectionReasonTitle: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#7b241c',
+        marginBottom: 4,
+    },
+    rejectionReasonText: {
+        fontSize: 16,
+        color: '#7b241c',
+        fontStyle: 'italic',
     },
     
 });

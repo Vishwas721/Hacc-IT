@@ -81,7 +81,7 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
                 // --- Part 2: Analyze Translated Text ---
                 const departments = await Department.findAll({ attributes: ['id', 'name'] });
                 const departmentNames = departments.map(d => d.name).join("', '");
-                const analysisPrompt = `Analyze the report: "${englishDescription}". Return a JSON object with "category" (from 'Pothole', 'Streetlight', 'Garbage', 'Other'), "priority" (from 'High', 'Medium', 'Low'), and "department" (from ['${departmentNames}']).`;
+                const analysisPrompt = `Analyze the report: "${englishDescription}". Return a JSON object with "category" (from 'Pothole', 'Streetlight', 'Garbage','Water Leakage','Public Safety', 'Other'), "priority" (from 'High', 'Medium', 'Low'), and "department" (from ['${departmentNames}']).`;
                 const analysisResult = await textModel.generateContent(analysisPrompt);
                 const aiResponse = JSON.parse(analysisResult.response.text().replace(/```json/g, '').replace(/```/g, '').trim());
                 
@@ -277,7 +277,49 @@ router.put('/:id/status', [protect, deptAdminOnly, upload.single('resolvedImage'
 });
 
 // In server/routes/reportRoutes.js, after your other PUT routes
+// In server/routes/reportRoutes.js
 
+// NEW ROUTE: For Municipal Admin to approve or reject a report
+router.put('/:id/review', [protect, municipalAdminOnly], async (req, res) => {
+    try {
+        const { action, reason } = req.body; // action can be 'approve' or 'reject'
+        const report = await Report.findByPk(req.params.id);
+
+        if (!report) return res.status(404).json({ error: 'Report not found.' });
+        if (report.status !== 'Pending Review') {
+            return res.status(400).json({ error: 'This report is not pending review.' });
+        }
+
+        let newStatus = '';
+        let notes = '';
+
+        if (action === 'approve') {
+            // If approved, it enters the normal workflow. It becomes 'Assigned' if a department is set, otherwise 'Submitted'.
+            newStatus = report.DepartmentId ? 'Assigned' : 'Submitted';
+            notes = 'Report approved by admin and entered into workflow.';
+            report.status = newStatus;
+        } else if (action === 'reject') {
+            newStatus = 'Rejected';
+            notes = `Report rejected by admin. Reason: ${reason}`;
+            report.status = newStatus;
+            report.rejectionReason = reason; // Save the rejection reason
+        } else {
+            return res.status(400).json({ error: 'Invalid action.' });
+        }
+
+        const newHistoryEntry = { status: newStatus, timestamp: new Date(), notes };
+        report.statusHistory = [...report.statusHistory, newHistoryEntry];
+        
+        await report.save();
+        
+        req.io.emit('report-updated', report.toJSON());
+        res.status(200).json(report);
+
+    } catch (error) {
+        console.error("Error reviewing report:", error);
+        res.status(500).json({ error: 'Failed to review report.' });
+    }
+});
 // NEW ROUTE 3: For Municipal Admin to set an SLA deadline
 router.put('/:id/sla', [protect, municipalAdminOnly], async (req, res) => {
     try {

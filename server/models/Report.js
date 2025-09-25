@@ -18,10 +18,15 @@ module.exports = (sequelize, DataTypes) => {
     status: { 
         type: DataTypes.STRING, 
         defaultValue: 'Submitted',
-        // Add the new status to the validation array
+        // 1. Add 'Rejected' to the list of valid statuses
         validate: {
-            isIn: [['Submitted', 'Pending Review', 'Assigned', 'In Progress', 'Resolved']]
+            isIn: [['Submitted', 'Pending Review', 'Assigned', 'In Progress', 'Resolved', 'Rejected']]
         }
+    },
+    // 2. Add a new field to store the reason for rejection
+    rejectionReason: {
+        type: DataTypes.TEXT,
+        allowNull: true,
     },
     priority: { // <-- ADD THIS FIELD
     type: DataTypes.STRING,
