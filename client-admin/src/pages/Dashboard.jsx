@@ -69,7 +69,8 @@ const Dashboard = () => {
     }
 
     return (
-        <Container fluid>
+        // The container no longer needs a specific background style
+        <Container fluid className={styles.dashboardContainer}>
             <h1 className="page-title">Dashboard Overview</h1>
             <motion.div variants={containerVariants} initial="hidden" animate="visible">
                 <Row>

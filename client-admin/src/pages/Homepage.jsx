@@ -188,11 +188,7 @@ const Homepage = () => {
                     <Navbar.Brand href="#home" className="fw-bold fs-4" style={{color: '#0a2351'}}>NagarikOne</Navbar.Brand>
                     <Navbar.Toggle aria-controls="basic-navbar-nav" />
                     <Navbar.Collapse id="basic-navbar-nav" className="justify-content-end">
-                        <Nav>
-                            <Nav.Link href="#how-it-works" style={styles.navLinkActive}>How It Works</Nav.Link>
-                            <Nav.Link href="#dashboard" style={styles.navLink}>Dashboard</Nav.Link>
-                            <Nav.Link href="#contact" style={styles.navLink}>Contact</Nav.Link>
-                        </Nav>
+
                     </Navbar.Collapse>
                 </Container>
             </Navbar>

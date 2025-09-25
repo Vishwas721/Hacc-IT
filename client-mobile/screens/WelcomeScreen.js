@@ -15,20 +15,20 @@ const WelcomeScreen = ({ navigation }) => {
         <View style={styles.buttonContainer}>
             <Button 
                 mode="contained" 
-                onPress={() => navigation.navigate('Login')}
+                onPress={() => navigation.navigate('Login')} // Or 'Register'
                 style={styles.button}
                 labelStyle={styles.buttonLabel}
             >
-                Login
+                 Login / Sign Up
             </Button>
             
             <Button 
                 mode="outlined" 
-                onPress={() => navigation.navigate('Register')}
+                onPress={() => navigation.navigate('PublicDashboard')}
                 style={styles.button}
                 labelStyle={styles.buttonLabel}
             >
-                Sign Up
+                View Public Dashboard
             </Button>
         </View>
     </SafeAreaView>
@@ -38,7 +38,7 @@ const WelcomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f0f8ff', // A pleasant sky blue color (AliceBlue)
+        backgroundColor: '#f0f8ff',
     },
     content: {
         flex: 1,
@@ -49,12 +49,12 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 52,
         fontWeight: 'bold',
-        color: '#2c3e50', // A dark, professional text color
+        color: '#2c3e50',
         marginBottom: 10,
     },
     tagline: {
         fontSize: 18,
-        color: '#34495e', // A slightly lighter text color
+        color: '#34495e',
         marginBottom: 50,
         textAlign: 'center',
         paddingHorizontal: 10,
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     button: {
         width: '100%',
         marginVertical: 8,
-        borderRadius: 30, // Pill shape
+        borderRadius: 30,
     },
     buttonLabel: {
         paddingVertical: 10,

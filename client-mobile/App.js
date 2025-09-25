@@ -10,16 +10,19 @@ import ReportDetailsScreen from './screens/ReportDetailsScreen';
 import SubmitReportScreen from './screens/SubmitReportScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
-import WelcomeScreen from './screens/WelcomeScreen'; // <-- Import the new screen
+import WelcomeScreen from './screens/WelcomeScreen';
+import PublicDashboardScreen from './screens/PublicDashboardScreen'; // <-- Import new screen
 
 const AppStack = createNativeStackNavigator();
 const AuthStack = createNativeStackNavigator();
+
+const THEME_COLOR = '#6200ee'; // Your purple theme color
 
 const AppNavigator = () => {
     const { token, loading } = useAuth();
 
     if (loading) {
-        return null; // Or a loading spinner for the whole app
+        return null; // Or a loading spinner
     }
 
     return (
@@ -28,7 +31,7 @@ const AppNavigator = () => {
                 // --- Main App (for logged-in users) ---
                 <AppStack.Navigator 
                     screenOptions={{
-                        headerStyle: { backgroundColor: '#6200ee' },
+                        headerStyle: { backgroundColor: THEME_COLOR },
                         headerTintColor: '#fff',
                         headerTitleStyle: { fontWeight: 'bold' },
                     }}
@@ -36,7 +39,7 @@ const AppNavigator = () => {
                     <AppStack.Screen 
                         name="MyReports" 
                         component={MyReportsScreen} 
-                        options={{ title: 'My Reports' }}
+                        options={{ title: 'My Submitted Reports' }}
                     />
                     <AppStack.Screen 
                         name="SubmitReport" 
@@ -51,10 +54,27 @@ const AppNavigator = () => {
                 </AppStack.Navigator>
             ) : (
                 // --- Authentication Flow (for new/logged-out users) ---
-                <AuthStack.Navigator screenOptions={{ headerShown: false }}>
-                    <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
-                    <AuthStack.Screen name="Login" component={LoginScreen} />
-                    <AuthStack.Screen name="Register" component={RegisterScreen} />
+                <AuthStack.Navigator>
+                    <AuthStack.Screen 
+                        name="Welcome" 
+                        component={WelcomeScreen} 
+                        options={{ headerShown: false }}
+                    />
+                    <AuthStack.Screen 
+                        name="Login" 
+                        component={LoginScreen} 
+                        options={{ title: 'Login' }}
+                    />
+                    <AuthStack.Screen 
+                        name="Register" 
+                        component={RegisterScreen} 
+                        options={{ title: 'Create Account' }}
+                    />
+                    <AuthStack.Screen 
+                        name="PublicDashboard" 
+                        component={PublicDashboardScreen}
+                        options={{ title: 'Public Dashboard' }}
+                    />
                 </AuthStack.Navigator>
             )}
         </NavigationContainer>

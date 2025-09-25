@@ -2,22 +2,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* New Color Palette based on Homepage.jsx */
-  --primary-color: #000080;         /* Ashoka Chakra Navy Blue for buttons/accents */
-  --primary-color-light: #4364F7;   /* Lighter blue for hover/secondary elements */
-  --text-color-dark: #0a2351;        /* Deep navy for titles */
-  --text-color-light: #4b5563;       /* Gray for body text */
-  --page-bg: linear-gradient(180deg, #f7f9fc 0%, #ffffff 100%);
+  --primary-color: #000080;
+  --primary-color-light: #4364F7;
+  --text-color-dark: #0a2351;
+  --text-color-light: #4b5563;
+  
+  /* The new official page background, taken from your homepage design */
+  --page-bg: linear-gradient(180deg, rgba(255, 249, 242, 0.5) 0%, rgba(255, 255, 255, 0) 50%, rgba(242, 255, 245, 0.5) 100%);
   
   /* Frosted Glass Effect */
-  --card-bg: rgba(255, 255, 255, 0.7);
-  --card-backdrop-blur: blur(10px);
-  --card-border-color: rgba(229, 231, 235, 0.6);
+  --card-bg: rgba(255, 255, 255, 0.75);
+  --card-backdrop-blur: blur(12px);
+  --card-border-color: rgba(229, 231, 235, 0.7);
   --card-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
 }
 
 body {
   background: var(--page-bg);
+  background-attachment: fixed; /* Ensures the gradient doesn't scroll with the content */
+  min-height: 100vh;
   font-family: 'Inter', sans-serif;
   color: var(--text-color-light);
 }
@@ -26,25 +29,17 @@ body {
 .frosted-card {
   background: var(--card-bg);
   backdrop-filter: var(--card-backdrop-blur);
-  -webkit-backdrop-filter: var(--card-backdrop-blur); /* For Safari */
+  -webkit-backdrop-filter: var(--card-backdrop-blur);
   border-radius: 1rem;
   border: 1px solid var(--card-border-color);
   box-shadow: var(--card-shadow);
 }
 
-/* Update default button styles */
 .btn-primary {
   background-color: var(--primary-color) !important;
   border-color: var(--primary-color) !important;
   font-weight: 600 !important;
   transition: all 0.2s ease-in-out !important;
-}
-
-.btn-primary:hover {
-  background-color: var(--primary-color-light) !important;
-  border-color: var(--primary-color-light) !important;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 128, 0.2);
 }
 
 .page-title {

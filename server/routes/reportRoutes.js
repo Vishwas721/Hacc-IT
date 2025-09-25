@@ -28,6 +28,19 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // POST /api/reports - Create a new report
 // In server/routes/reportRoutes.js
+router.get('/public', async (req, res) => {
+    try {
+        const reports = await Report.findAll({
+            attributes: ['id', 'description', 'category', 'status', 'location', 'createdAt', 'upvote_count'],
+            order: [['createdAt', 'DESC']],
+        });
+        res.status(200).json(reports);
+    } catch (error) {
+        console.error("Error fetching public reports:", error);
+        res.status(500).json({ error: 'Failed to fetch public reports.' });
+    }
+});
+
 
 router.post('/', [protect, upload.single('image')], async (req, res) => {
     try {
