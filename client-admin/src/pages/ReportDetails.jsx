@@ -129,7 +129,7 @@ const ReportDetails = () => {
     if (!report) {
         return <Spinner animation="border" className="d-block mx-auto mt-5" />;
     }
-    
+        const isActionable = ['Submitted', 'Pending Review', 'Assigned', 'In Progress'].includes(report.status);
     const position = [report.location.coordinates[1], report.location.coordinates[0]];
 
     return (
@@ -181,7 +181,7 @@ const ReportDetails = () => {
                         </Card.Body>
                     </Card>
 
-                    {user && (user.role === 'municipal-admin' || user.role === 'dept-admin') && (
+                    {isActionable && user && (user.role === 'municipal-admin' || user.role === 'dept-admin') && (
                         <Card className={styles.actionsCard}>
                             <Card.Body className="p-4">
                                 <h5 className={styles.cardTitle}>Admin Actions</h5>
@@ -217,7 +217,7 @@ const ReportDetails = () => {
                         </Card>
                     )}
 
-                    {user && user.role === 'municipal-admin' && (
+{isActionable && user && user.role === 'municipal-admin' && (
                         <Card className={styles.actionsCard}>
                             <Card.Body className="p-4">
                                 <h5 className={styles.cardTitle}>SLA Management</h5>
@@ -250,7 +250,7 @@ const ReportDetails = () => {
                         </Card>
                     )}
                     
-                    {report.status === 'Resolved' && report.resolvedImageUrl && (
+                   {report.status === 'Resolved' && report.resolvedImageUrl &&(
                         <Card className={styles.detailsCard}>
                              <Card.Body className="p-4">
                                 <h5 className={styles.cardTitle}>Proof of Resolution</h5>

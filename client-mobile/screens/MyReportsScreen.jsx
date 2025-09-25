@@ -49,19 +49,29 @@ const MyReportsScreen = ({ navigation }) => {
         }, [fetchReports])
     );
 
+// In client-mobile/screens/MyReportsScreen.jsx
+
+    // ... inside the MyReportsScreen component
+
     const getStatusStyle = (status) => {
-        switch (status?.toLowerCase()) {
-            case 'resolved':
-                return { backgroundColor: '#2ecc71', color: '#fff' };
-            case 'in progress':
-                return { backgroundColor: '#3498db', color: '#fff' };
-            case 'pending':
-                return { backgroundColor: '#f1c40f', color: '#333' };
+        switch (status) { // No need for toLowerCase if data is consistent
+            case 'Resolved':
+                return { backgroundColor: '#2ecc71', color: '#fff' }; // Green
+            case 'In Progress':
+                return { backgroundColor: '#3498db', color: '#fff' }; // Blue
+            case 'Assigned':
+                return { backgroundColor: '#9b59b6', color: '#fff' }; // Purple
+            case 'Pending Review':
+                return { backgroundColor: '#f1c40f', color: '#333' }; // Yellow
+            case 'Rejected':
+                return { backgroundColor: '#e74c3c', color: '#fff' }; // Red
+            case 'Submitted':
             default:
-                return { backgroundColor: '#bdc3c7', color: '#fff' };
+                return { backgroundColor: '#95a5a6', color: '#fff' }; // Gray
         }
     };
 
+    // ... the rest of your component is correct
     const renderReportItem = ({ item }) => (
         <Card 
             style={styles.card} 
