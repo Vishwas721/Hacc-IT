@@ -1,85 +1,55 @@
-/* File: src/index.css */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* File: client-admin/src/index.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --primary-color: #0d6efd;
-  --light-gray: #f8f9fa;
-  --border-color: #dee2e6;
-  --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --card-hover-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+  /* New Color Palette based on Homepage.jsx */
+  --primary-color: #000080;         /* Ashoka Chakra Navy Blue for buttons/accents */
+  --primary-color-light: #4364F7;   /* Lighter blue for hover/secondary elements */
+  --text-color-dark: #0a2351;        /* Deep navy for titles */
+  --text-color-light: #4b5563;       /* Gray for body text */
+  --page-bg: linear-gradient(180deg, #f7f9fc 0%, #ffffff 100%);
   
-  /* NEW: Define themeable colors */
-  --bs-body-bg: var(--light-gray);
-  --bs-body-color: #212529;
-  --card-bg: #ffffff;
-  --sidebar-bg: #ffffff;
-  --sidebar-color: #5a6474;
-  --sidebar-hover-bg: #e9ecef;
-  --sidebar-hover-color: #000;
-  --page-title-color: #212529;
+  /* Frosted Glass Effect */
+  --card-bg: rgba(255, 255, 255, 0.7);
+  --card-backdrop-blur: blur(10px);
+  --card-border-color: rgba(229, 231, 235, 0.6);
+  --card-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
 }
-
-[data-theme='dark'] {
-  --primary-color: #4dabf7; /* A lighter blue for dark mode */
-  --border-color: #495057;
-  
-  --bs-body-bg: #1a1b1e;
-  --bs-body-color: #c1c2c5;
-  --card-bg: #25262b;
-  --sidebar-bg: #25262b;
-  --sidebar-color: #c1c2c5;
-  --sidebar-hover-bg: #373A40;
-  --sidebar-hover-color: #fff;
-  --page-title-color: #fff;
-}
-
 
 body {
-  background-color: var(--bs-body-bg) !important;
-  color: var(--bs-body-color) !important;
+  background: var(--page-bg);
   font-family: 'Inter', sans-serif;
-  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  color: var(--text-color-light);
 }
 
-/* Update sidebar to use CSS variables */
-.sidebar {
-  background-color: var(--sidebar-bg);
-  border-right: 1px solid var(--border-color);
-  /* ... rest is the same */
-  min-height: 100vh;
-  padding: 1.5rem;
+/* Reusable Frosted Card Class */
+.frosted-card {
+  background: var(--card-bg);
+  backdrop-filter: var(--card-backdrop-blur);
+  -webkit-backdrop-filter: var(--card-backdrop-blur); /* For Safari */
+  border-radius: 1rem;
+  border: 1px solid var(--card-border-color);
+  box-shadow: var(--card-shadow);
 }
 
-.sidebar .sidebar-header {
-  color: var(--page-title-color);
-  /* ... rest is the same */
-  font-size: 1.5rem;
-  font-weight: 700;
-  text-align: center;
-  margin-bottom: 2rem;
+/* Update default button styles */
+.btn-primary {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease-in-out !important;
 }
 
-.sidebar .nav-link {
-  color: var(--sidebar-color);
-  /* ... rest is the same */
-}
-.sidebar .nav-link:hover {
-  background-color: var(--sidebar-hover-bg);
-  color: var(--sidebar-hover-color);
-}
-.sidebar .nav-link.active {
-  background-color: var(--primary-color);
-  color: white;
-  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+.btn-primary:hover {
+  background-color: var(--primary-color-light) !important;
+  border-color: var(--primary-color-light) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 128, 0.2);
 }
 
-/* Update cards to use CSS variables */
-.custom-card {
-  background-color: var(--card-bg);
-  /* ... rest is the same */
-}
-
-/* Update page title to use CSS variables */
-.page-title, .chart-card .card-title {
-  color: var(--page-title-color);
+.page-title {
+    color: var(--text-color-dark);
+    font-weight: 800;
+    font-size: 2.25rem;
+    margin-bottom: 2rem;
 }

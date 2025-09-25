@@ -1,4 +1,4 @@
-/* File: src/pages/Reports.module.css */
+/* File: client-admin/src/pages/Reports.module.css */
 .header {
   display: flex;
   justify-content: space-between;
@@ -6,29 +6,62 @@
   margin-bottom: 2rem;
 }
 
-.pageTitle {
-  font-size: 2rem;
-  font-weight: 700;
+.searchBox {
+  position: relative;
+}
+
+.searchInput {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border-color);
+  border-radius: 0.5rem;
+  padding-left: 2.5rem; /* Space for icon */
+  color: var(--text-color-dark);
+  width: 300px;
+}
+.searchInput::placeholder {
+  color: var(--text-color-light);
+}
+
+.tableContainer {
+  padding: 1.5rem;
 }
 
 .table {
-  border-radius: 0.75rem;
-  overflow: hidden; /* Ensures border-radius is applied to the table */
-  box-shadow: var(--card-shadow);
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
 }
 
 .table th {
-  background-color: #f8f9fa;
+  color: var(--text-color-dark);
   font-weight: 600;
+  border-bottom: 2px solid var(--card-border-color) !important;
+  background-color: transparent;
   cursor: pointer;
-  user-select: none;
+}
+
+.table td {
+    color: var(--text-color-light);
+    vertical-align: middle;
+    padding: 1rem 0.5rem;
+    border-top: 1px solid var(--card-border-color);
+}
+
+.table tbody tr:first-child td {
+  border-top: none;
+}
+
+.descriptionCell {
+    max-width: 300px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .statusBadge {
-  padding: 0.25rem 0.6rem;
+  padding: 0.3rem 0.75rem;
   border-radius: 1rem;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: #fff;
-  text-transform: uppercase;
 }

@@ -1,35 +1,32 @@
-/* File: src/pages/Dashboard.module.css */
-.pageTitle {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 2rem;
+/* File: client-admin/src/pages/Dashboard.module.css */
+.statCard {
+    padding: 1rem;
+    transition: transform 0.2s ease-in-out;
 }
 
-.customCard {
-  border: none !important;
-  border-radius: 0.75rem !important;
-  box-shadow: var(--card-shadow) !important;
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-}
-
-.customCard:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--card-hover-shadow) !important;
+.statCard:hover {
+    transform: translateY(-5px);
 }
 
 .statCardTitle {
-  color: #6c757d;
+  color: var(--text-color-light);
   font-weight: 600;
+  font-size: 0.9rem;
   margin-bottom: 0.5rem;
   text-transform: uppercase;
 }
 
 .statCardValue {
   font-size: 2.5rem;
-  font-weight: 700;
+  font-weight: 800;
+  color: var(--text-color-dark);
 }
 
-.chartCardTitle {
-  font-size: 1.25rem;
-  font-weight: 600;
+.chartCard {
+    padding: 1rem;
+}
+
+.chartContainer {
+    height: 350px;
+    width: 100%;
 }

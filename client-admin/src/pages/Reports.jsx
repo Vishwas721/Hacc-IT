@@ -1,6 +1,5 @@
-// File: src/pages/Reports.jsx
+// File: client-admin/src/pages/Reports.jsx
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-// CORRECTED: All react-bootstrap components are now on a single line
 import { Container, Table, Button, Badge, Form, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useReactTable, getCoreRowModel, getSortedRowModel, getFilteredRowModel, flexRender } from '@tanstack/react-table';
@@ -30,6 +29,7 @@ const Reports = () => {
     const navigate = useNavigate();
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [globalFilter, setGlobalFilter] = useState('');
 
     const fetchReports = useCallback(async () => {
         setLoading(true);
@@ -48,19 +48,19 @@ const Reports = () => {
     }, [fetchReports]);
     
     const columns = useMemo(() => [
-        { header: 'Description', accessorKey: 'description' },
+        // Using accessorFn for nested properties is more robust
+        { header: 'Description', accessorFn: row => row.description, cell: info => <span className={styles.descriptionCell}>{info.getValue()}</span> },
         { header: 'Category', accessorKey: 'category' },
-        { header: 'Priority', accessorKey: 'priority', cell: info => <PriorityBadge priority={info.getValue()} /> }, // <-- ADD THIS COLUMN
+        { header: 'Priority', accessorKey: 'priority', cell: info => <PriorityBadge priority={info.getValue()} /> },
         { header: 'Status', accessorKey: 'status', cell: info => <StatusBadge status={info.getValue()} /> },
-        { header: 'Reported On', accessorKey: 'createdAt', cell: info => new Date(info.getValue()).toLocaleDateString() },
+        { header: 'Department', accessorFn: row => row.Department?.name || 'N/A' },
         { header: 'Actions', id: 'actions', cell: ({ row }) => (
-            <Button variant="outline-primary" size="sm" onClick={() => navigate(`/reports/${row.original.id}`)}>
+            <Button variant="primary" size="sm" onClick={() => navigate(`/reports/${row.original.id}`)}>
                 View Details
             </Button>
         )},
     ], [navigate]);
 
-    const [globalFilter, setGlobalFilter] = useState('');
     const table = useReactTable({
         data: reports,
         columns,
@@ -82,39 +82,43 @@ const Reports = () => {
     return (
         <Container fluid>
             <div className={styles.header}>
-                <h1 className={styles.pageTitle}>Manage Reports</h1>
-                <Form.Control
-                    type="text"
-                    value={globalFilter ?? ''}
-                    onChange={e => setGlobalFilter(e.target.value)}
-                    placeholder="Search all reports..."
-                    style={{ maxWidth: '300px' }}
-                />
+                <h1 className="page-title">Manage Reports</h1>
+                <div className={styles.searchBox}>
+                    <Form.Control
+                        type="text"
+                        value={globalFilter ?? ''}
+                        onChange={e => setGlobalFilter(e.target.value)}
+                        placeholder="Search reports..."
+                        className={styles.searchInput}
+                    />
+                </div>
             </div>
             
-            <Table hover responsive className={styles.table}>
-                <thead>
-                    {table.getHeaderGroups().map(headerGroup => (
-                        <tr key={headerGroup.id}>
-                            {headerGroup.headers.map(header => (
-                                <th key={header.id} onClick={header.column.getToggleSortingHandler()} style={{ cursor: 'pointer' }}>
-                                    {flexRender(header.column.columnDef.header, header.getContext())}
-                                    {{ asc: ' 🔼', desc: ' 🔽' }[header.column.getIsSorted()] ?? null}
-                                </th>
-                            ))}
-                        </tr>
-                    ))}
-                </thead>
-                <tbody>
-                    {table.getRowModel().rows.map(row => (
-                        <tr key={row.id}>
-                            {row.getVisibleCells().map(cell => (
-                                <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
-                            ))}
-                        </tr>
-                    ))}
-                </tbody>
-            </Table>
+            <div className={`frosted-card ${styles.tableContainer}`}>
+                <Table hover responsive className={styles.table}>
+                    <thead>
+                        {table.getHeaderGroups().map(headerGroup => (
+                            <tr key={headerGroup.id}>
+                                {headerGroup.headers.map(header => (
+                                    <th key={header.id} onClick={header.column.getToggleSortingHandler()}>
+                                        {flexRender(header.column.columnDef.header, header.getContext())}
+                                        {{ asc: ' 🔼', desc: ' 🔽' }[header.column.getIsSorted()] ?? null}
+                                    </th>
+                                ))}
+                            </tr>
+                        ))}
+                    </thead>
+                    <tbody>
+                        {table.getRowModel().rows.map(row => (
+                            <tr key={row.id}>
+                                {row.getVisibleCells().map(cell => (
+                                    <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </Table>
+            </div>
         </Container>
     );
 };
