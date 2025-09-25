@@ -1,15 +1,15 @@
-// File: client-mobile/screens/SubmitReportScreen.jsx
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Button, Image, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Image, Alert, ScrollView } from 'react-native';
+import { Text, Button, Card, TextInput, ActivityIndicator } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { API_URL } from '../config';
 
+const THEME_COLOR = '#6200ee'; // Your purple theme color
+
 export default function SubmitReportScreen({ navigation }) {
-    const [hasCameraPermission, setHasCameraPermission] = useState(null);
-    const [hasLocationPermission, setHasLocationPermission] = useState(null);
     const [photo, setPhoto] = useState(null);
     const [location, setLocation] = useState(null);
     const [description, setDescription] = useState('');
@@ -43,7 +43,6 @@ export default function SubmitReportScreen({ navigation }) {
             }
             let loc = await Location.getCurrentPositionAsync({});
             setLocation(loc);
-            Alert.alert('Location Captured!', `Lat: ${loc.coords.latitude.toFixed(4)}, Lon: ${loc.coords.longitude.toFixed(4)}`);
         }
     };
 
@@ -84,7 +83,6 @@ export default function SubmitReportScreen({ navigation }) {
             });
 
             Alert.alert('✅ Success!', 'Your report has been submitted.');
-            // Go back to the list screen after a successful submission
             navigation.navigate('MyReports');
 
         } catch (error) {
@@ -96,38 +94,102 @@ export default function SubmitReportScreen({ navigation }) {
     };
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>📌 Submit a Civic Report</Text>
-
-            {photo ? (
-                <Image source={{ uri: photo.uri }} style={styles.image} />
-            ) : (
-                <View style={styles.placeholder}><Text>No photo taken</Text></View>
-            )}
-
-            <Button title="Take Photo & Get Location" onPress={takePictureAndGetLocation} />
-
-            <TextInput
-                style={styles.input}
-                placeholder="Describe the issue..."
-                value={description}
-                onChangeText={setDescription}
-                multiline
-            />
-
-            {isSubmitting ? (
-                <ActivityIndicator size="large" color="#007bff" />
-            ) : (
-                <Button title="Submit Report" onPress={handleSubmit} />
-            )}
-        </View>
+        <ScrollView contentContainerStyle={styles.container}>
+            <Card style={styles.card}>
+                <Card.Title 
+                    title="Submit New Report"
+                    subtitle="Your contribution helps build a better city."
+                />
+                <Card.Content>
+                    {photo ? (
+                        <Image source={{ uri: photo.uri }} style={styles.image} />
+                    ) : (
+                        <View style={styles.placeholder}>
+                            <Text style={styles.placeholderText}>Step 1: Take a Photo</Text>
+                        </View>
+                    )}
+                    <Button 
+                        icon="camera"
+                        mode="contained" 
+                        onPress={takePictureAndGetLocation} 
+                        style={styles.button}
+                    >
+                        Take Photo & Get Location
+                    </Button>
+                    <TextInput
+                        label="Step 2: Describe the issue..."
+                        value={description}
+                        onChangeText={setDescription}
+                        multiline
+                        numberOfLines={4}
+                        mode="outlined"
+                        style={styles.input}
+                    />
+                </Card.Content>
+                <Card.Actions style={styles.actions}>
+                    {isSubmitting ? (
+                        <ActivityIndicator animating={true} size="large" color={THEME_COLOR} />
+                    ) : (
+                        <Button 
+                            mode="contained" 
+                            onPress={handleSubmit}
+                            style={styles.submitButton}
+                            labelStyle={{ color: '#fff' }}
+                        >
+                            Step 3: Submit Report
+                        </Button>
+                    )}
+                </Card.Actions>
+            </Card>
+        </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', padding: 20 },
-    title: { fontSize: 22, fontWeight: 'bold', marginBottom: 20 },
-    placeholder: { width: 200, height: 200, backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderRadius: 10 },
-    image: { width: 200, height: 200, marginBottom: 20, borderRadius: 10 },
-    input: { borderWidth: 1, borderColor: '#ccc', padding: 10, width: '100%', marginTop: 20, marginBottom: 20, borderRadius: 5, minHeight: 80, textAlignVertical: 'top' },
+    container: { 
+        flexGrow: 1, 
+        justifyContent: 'center', 
+        padding: 10, 
+        backgroundColor: '#f5f5f5' 
+    },
+    card: { 
+        margin: 5,
+        borderRadius: 12,
+    },
+    placeholder: { 
+        height: 250, 
+        backgroundColor: '#e9ecef', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        marginBottom: 15, 
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: '#dee2e6',
+        borderStyle: 'dashed',
+    },
+    placeholderText: {
+        color: '#6c757d'
+    },
+    image: { 
+        height: 250, 
+        marginBottom: 15, 
+        borderRadius: 10 
+    },
+    button: { 
+        marginBottom: 15, 
+        paddingVertical: 5,
+        backgroundColor: THEME_COLOR,
+    },
+    input: { 
+        marginBottom: 15 
+    },
+    actions: {
+        padding: 16,
+        justifyContent: 'center'
+    },
+    submitButton: { 
+        flex: 1, 
+        paddingVertical: 8,
+        backgroundColor: THEME_COLOR,
+    }
 });

@@ -14,11 +14,23 @@ module.exports = (sequelize, DataTypes) => {
   imageUrl: { type: DataTypes.STRING, allowNull: false },
     // THE FIX IS ON THIS LINE: Changed 4236 to 4326
     location: { type: DataTypes.GEOMETRY('POINT', 4326), allowNull: false },
-    status: { type: DataTypes.STRING, defaultValue: 'Submitted' },
+    // In server/models/Report.js, inside Report.init({...})
+    status: { 
+        type: DataTypes.STRING, 
+        defaultValue: 'Submitted',
+        // Add the new status to the validation array
+        validate: {
+            isIn: [['Submitted', 'Pending Review', 'Assigned', 'In Progress', 'Resolved']]
+        }
+    },
     priority: { // <-- ADD THIS FIELD
     type: DataTypes.STRING,
     defaultValue: 'Medium',
   }, // We'll keep this for easy querying
+    isAiVerified: { // <-- ADD THIS FIELD
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
     category: DataTypes.STRING,
     urgency_score: { type: DataTypes.INTEGER, defaultValue: 1 },
       slaDeadline: { // <-- ADD THIS FIELD

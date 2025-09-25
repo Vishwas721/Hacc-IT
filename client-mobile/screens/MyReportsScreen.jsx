@@ -1,22 +1,22 @@
-// File: client-mobile/screens/MyReportsScreen.jsx
 import React, { useState, useEffect, useCallback, useLayoutEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Button } from 'react-native';
+import { View, FlatList, StyleSheet, RefreshControl } from 'react-native';
+import { Text, Card, FAB, ActivityIndicator, Banner, Button as PaperButton } from 'react-native-paper';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { API_URL } from '../config';
-import { useAuth } from '../context/AuthContext'; // Import the useAuth hook
+import { useAuth } from '../context/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 const MyReportsScreen = ({ navigation }) => {
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const { logout } = useAuth(); // Get the logout function from our context
+    const { logout } = useAuth();
 
-    // This hook adds the button to the header
     useLayoutEffect(() => {
         navigation.setOptions({
             headerRight: () => (
-                <Button onPress={logout} title="Logout" color="#ff453a" />
+                <PaperButton onPress={logout} textColor="#fff">Logout</PaperButton>
             ),
         });
     }, [navigation, logout]);
@@ -32,8 +32,7 @@ const MyReportsScreen = ({ navigation }) => {
                 });
                 setReports(response.data);
             } else {
-                setError("Authentication token not found.");
-                logout(); // If token is missing, force logout
+                logout();
             }
         } catch (err) {
             console.error("Fetch Error:", err);
@@ -42,65 +41,151 @@ const MyReportsScreen = ({ navigation }) => {
             setLoading(false);
         }
     }, [logout]);
-
-    useEffect(() => {
-        const unsubscribe = navigation.addListener('focus', () => {
+    
+    // useFocusEffect is often better for fetching data when a screen comes into view
+    useFocusEffect(
+        useCallback(() => {
             fetchReports();
-        });
-        return unsubscribe;
-    }, [navigation, fetchReports]);
-
-
-    const EmptyListComponent = () => (
-        <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No reports found.</Text>
-            <Text style={styles.emptySubText}>Pull down to refresh or submit a new report.</Text>
-        </View>
+        }, [fetchReports])
     );
 
-    if (error && !loading) {
-        return (
-            <View style={styles.emptyContainer}>
-                <Text style={styles.errorText}>{error}</Text>
-            </View>
-        );
+    const getStatusStyle = (status) => {
+        switch (status?.toLowerCase()) {
+            case 'resolved':
+                return { backgroundColor: '#2ecc71', color: '#fff' };
+            case 'in progress':
+                return { backgroundColor: '#3498db', color: '#fff' };
+            case 'pending':
+                return { backgroundColor: '#f1c40f', color: '#333' };
+            default:
+                return { backgroundColor: '#bdc3c7', color: '#fff' };
+        }
+    };
+
+    const renderReportItem = ({ item }) => (
+        <Card 
+            style={styles.card} 
+            onPress={() => navigation.navigate('ReportDetails', { reportId: item.id })}
+        >
+            <Card.Content>
+                <Text style={styles.itemDescription} numberOfLines={2}>{item.description}</Text>
+                <View style={styles.statusContainer}>
+                    <Text style={styles.statusLabel}>Status:</Text>
+                    <View style={[styles.statusTag, getStatusStyle(item.status)]}>
+                        <Text style={[styles.statusText, {color: getStatusStyle(item.status).color}]}>
+                            {item.status.toUpperCase()}
+                        </Text>
+                    </View>
+                </View>
+            </Card.Content>
+        </Card>
+    );
+
+    if (loading && reports.length === 0) {
+        return <ActivityIndicator animating={true} size="large" style={styles.loader} />;
     }
 
     return (
-        <View style={styles.fullScreen}>
+        <View style={styles.container}>
+            {error && (
+                <Banner visible={!!error} actions={[{ label: 'Retry', onPress: fetchReports }]}>
+                    <Text>{error}</Text>
+                </Banner>
+            )}
             <FlatList
                 data={reports}
                 keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.itemContainer} onPress={() => navigation.navigate('ReportDetails', { reportId: item.id })}>
-                        <Text style={styles.itemDescription} numberOfLines={2}>{item.description}</Text>
-                        <Text style={styles.itemStatus}>Status: {item.status}</Text>
-                    </TouchableOpacity>
-                )}
+                renderItem={renderReportItem}
                 ListHeaderComponent={<Text style={styles.title}>My Submitted Reports</Text>}
-                ListEmptyComponent={!loading ? <EmptyListComponent /> : null}
-                refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchReports} />}
+                ListEmptyComponent={!loading ? (
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>No reports found.</Text>
+                        <Text style={styles.emptySubText}>Press the '+' button to submit your first report.</Text>
+                    </View>
+                ) : null}
+                refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchReports} colors={['#3498db']} />}
+                contentContainerStyle={styles.listContent}
             />
-            <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('SubmitReport')}>
-                <Text style={styles.fabIcon}>+</Text>
-            </TouchableOpacity>
+            <FAB
+                style={styles.fab}
+                icon="plus"
+                onPress={() => navigation.navigate('SubmitReport')}
+            />
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    fullScreen: { flex: 1 },
-    loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    title: { fontSize: 24, fontWeight: 'bold', padding: 16, backgroundColor: '#f7f7f7' },
-    itemContainer: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee', backgroundColor: '#fff' },
-    itemDescription: { fontSize: 16, fontWeight: '500' },
-    itemStatus: { fontSize: 14, color: 'gray', marginTop: 4 },
-    emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 50 },
-    emptyText: { fontSize: 18, fontWeight: 'bold' },
-    emptySubText: { fontSize: 14, color: 'gray', marginTop: 8 },
-    errorText: { fontSize: 16, color: 'red', textAlign: 'center', padding: 20 },
-    fab: { position: 'absolute', width: 60, height: 60, alignItems: 'center', justifyContent: 'center', right: 30, bottom: 30, backgroundColor: '#007bff', borderRadius: 30, elevation: 8 },
-    fabIcon: { fontSize: 30, color: 'white' },
+    container: { 
+        flex: 1, 
+        backgroundColor: '#f5f5f5' 
+    },
+    loader: { 
+        flex: 1, 
+        justifyContent: 'center', 
+        alignItems: 'center' 
+    },
+    listContent: {
+        paddingHorizontal: 8,
+        paddingBottom: 80, // To make space for the FAB
+    },
+    title: { 
+        fontSize: 26, 
+        fontWeight: 'bold', 
+        padding: 16, 
+        color: '#333'
+    },
+    card: { 
+        marginVertical: 6,
+        marginHorizontal: 8,
+    },
+    itemDescription: { 
+        fontSize: 16, 
+        fontWeight: '500', 
+        marginBottom: 12,
+        lineHeight: 22,
+    },
+    statusContainer: { 
+        flexDirection: 'row', 
+        alignItems: 'center' 
+    },
+    statusLabel: {
+        fontSize: 14,
+        color: 'gray',
+        marginRight: 8,
+    },
+    statusTag: {
+        borderRadius: 12,
+        paddingVertical: 4,
+        paddingHorizontal: 12,
+    },
+    statusText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+    emptyContainer: { 
+        flex: 1, 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        paddingTop: 100 
+    },
+    emptyText: { 
+        fontSize: 18, 
+        fontWeight: 'bold', 
+        color: '#555' 
+    },
+    emptySubText: { 
+        fontSize: 14, 
+        color: 'gray', 
+        marginTop: 8 
+    },
+    fab: { 
+        position: 'absolute', 
+        margin: 16, 
+        right: 0, 
+        bottom: 0,
+        backgroundColor: '#6200ee',
+    },
 });
 
 export default MyReportsScreen;

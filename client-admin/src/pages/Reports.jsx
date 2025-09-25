@@ -13,9 +13,17 @@ const PriorityBadge = ({ priority }) => {
     return <Badge bg={variantMap[priority] || 'secondary'} className={styles.statusBadge}>{priority}</Badge>;
 };
 
+// In client-admin/src/pages/Reports.jsx
+
 const StatusBadge = ({ status }) => {
-    const variant = { Pending: 'warning', 'In Progress': 'primary', Resolved: 'success' }[status];
-    return <Badge bg={variant} className={styles.statusBadge}>{status}</Badge>;
+    const variantMap = {
+        'Submitted': 'secondary',
+        'Pending Review': 'warning', // <-- Add this new status and color
+        'Assigned': 'info',
+        'In Progress': 'primary',
+        'Resolved': 'success'
+    };
+    return <Badge bg={variantMap[status] || 'dark'}>{status}</Badge>;
 };
 
 const Reports = () => {
