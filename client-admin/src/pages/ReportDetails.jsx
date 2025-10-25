@@ -12,10 +12,8 @@ import { useAuth } from '../context/AuthContext';
 
 const StatusBadge = ({ status }) => {
     const variantMap = {
-        'Submitted': 'secondary',
-        'Assigned': 'info',
-        'In Progress': 'primary',
-        'Resolved': 'success'
+        'Submitted': 'secondary', 'Pending Review': 'warning', 'Assigned': 'info',
+        'In Progress': 'primary', 'Resolved': 'success', 'Rejected': 'danger'
     };
     return <Badge bg={variantMap[status] || 'dark'}>{status}</Badge>;
 };
@@ -39,7 +37,8 @@ const ReportDetails = () => {
     const [resolvedNotes, setResolvedNotes] = useState('');
     const [resolvedImage, setResolvedImage] = useState(null);
     const [slaHours, setSlaHours] = useState('');
-
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
     const fetchReportAndDepartments = useCallback(async () => {
         try {
             const [reportRes, deptsRes] = await Promise.all([
@@ -66,6 +65,21 @@ const ReportDetails = () => {
             fetchReportAndDepartments();
         } catch (error) {
             toast.error(error.response?.data?.error || "Failed to assign department.");
+        }
+    };
+
+        const handleReview = async (action) => {
+        if (action === 'reject' && !rejectionReason) {
+            return toast.error("A reason is required to reject a report.");
+        }
+        try {
+            await api.put(`/reports/${report.id}/review`, { action, reason: rejectionReason });
+            toast.success(`Report has been ${action}d!`);
+            setShowRejectModal(false);
+            setRejectionReason('');
+            fetchReportAndDepartments(); // Refresh data
+        } catch (error) {
+            toast.error("Failed to process review.");
         }
     };
 
@@ -115,7 +129,7 @@ const ReportDetails = () => {
     if (!report) {
         return <Spinner animation="border" className="d-block mx-auto mt-5" />;
     }
-    
+        const isActionable = ['Submitted', 'Pending Review', 'Assigned', 'In Progress'].includes(report.status);
     const position = [report.location.coordinates[1], report.location.coordinates[0]];
 
     return (
@@ -154,13 +168,20 @@ const ReportDetails = () => {
 
                             <div className={styles.detailItem}><span className={styles.detailLabel}>Priority</span><div className={styles.detailValue}><PriorityBadge priority={report.priority} /></div></div>
                             <div className={styles.detailItem}><span className={styles.detailLabel}>Assigned Department</span><p className={styles.detailValue}>{report.Department ? report.Department.name : 'Unassigned'}</p></div>
-                            <div className={styles.detailItem}><span className={styles.detailLabel}>Category</span><p className={styles.detailValue}>{report.category}</p></div>
+                           
+<div className={styles.detailItem}>
+    <span className={styles.detailLabel}>Category</span>
+    <p className={styles.detailValue}>
+        {report.category}
+        {report.isAiVerified && <Badge bg="success" className="ms-2">AI Verified ✅</Badge>}
+    </p>
+</div>
                             <div className={styles.detailItem}><span className={styles.detailLabel}>Description</span><p className={styles.detailValue}>{report.description}</p></div>
                             <div className={styles.detailItem}><span className={styles.detailLabel}>Reported On</span><p className={styles.detailValue}>{new Date(report.createdAt).toLocaleString()}</p></div>
                         </Card.Body>
                     </Card>
 
-                    {user && (user.role === 'municipal-admin' || user.role === 'dept-admin') && (
+                    {isActionable && user && (user.role === 'municipal-admin' || user.role === 'dept-admin') && (
                         <Card className={styles.actionsCard}>
                             <Card.Body className="p-4">
                                 <h5 className={styles.cardTitle}>Admin Actions</h5>
@@ -196,7 +217,7 @@ const ReportDetails = () => {
                         </Card>
                     )}
 
-                    {user && user.role === 'municipal-admin' && (
+{isActionable && user && user.role === 'municipal-admin' && (
                         <Card className={styles.actionsCard}>
                             <Card.Body className="p-4">
                                 <h5 className={styles.cardTitle}>SLA Management</h5>
@@ -215,8 +236,21 @@ const ReportDetails = () => {
                             </Card.Body>
                         </Card>
                     )}
+
+                                        {user && user.role === 'municipal-admin' && report.status === 'Pending Review' && (
+                        <Card className={`${styles.actionsCard} border-warning`}>
+                            <Card.Body className="p-4">
+                                <h5 className={`${styles.cardTitle} text-warning`}>Pending Review</h5>
+                                <Card.Text className="mb-3">AI verification failed. Please manually review this report.</Card.Text>
+                                <div className="d-grid gap-2">
+                                    <Button variant="success" onClick={() => handleReview('approve')}>Approve Report</Button>
+                                    <Button variant="danger" onClick={() => setShowRejectModal(true)}>Reject Report</Button>
+                                </div>
+                            </Card.Body>
+                        </Card>
+                    )}
                     
-                    {report.status === 'Resolved' && report.resolvedImageUrl && (
+                   {report.status === 'Resolved' && report.resolvedImageUrl &&(
                         <Card className={styles.detailsCard}>
                              <Card.Body className="p-4">
                                 <h5 className={styles.cardTitle}>Proof of Resolution</h5>
@@ -245,6 +279,26 @@ const ReportDetails = () => {
                 <Modal.Footer>
                     <Button variant="secondary" onClick={() => setShowResolveModal(false)}>Cancel</Button>
                     <Button variant="primary" onClick={() => handleUpdateStatus('Resolved')}>Confirm Resolution</Button>
+                </Modal.Footer>
+            </Modal>
+
+            <Modal show={showRejectModal} onHide={() => setShowRejectModal(false)} centered>
+                <Modal.Header closeButton><Modal.Title>Reject Report #{report.id}</Modal.Title></Modal.Header>
+                <Modal.Body>
+                    <Form.Group controlId="rejectionReason">
+                        <Form.Label>Please provide a reason for rejection:</Form.Label>
+                        <Form.Control 
+                            as="textarea" 
+                            rows={4} 
+                            value={rejectionReason}
+                            onChange={(e) => setRejectionReason(e.target.value)}
+                            placeholder="e.g., Image is unclear, not a valid civic issue, spam..."
+                        />
+                    </Form.Group>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowRejectModal(false)}>Cancel</Button>
+                    <Button variant="danger" onClick={() => handleReview('reject')}>Confirm Rejection</Button>
                 </Modal.Footer>
             </Modal>
         </Container>

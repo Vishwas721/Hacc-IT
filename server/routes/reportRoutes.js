@@ -28,95 +28,146 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // POST /api/reports - Create a new report
 // In server/routes/reportRoutes.js
+router.get('/public', async (req, res) => {
+    try {
+        const reports = await Report.findAll({
+            attributes: ['id', 'description', 'category', 'status', 'location', 'createdAt', 'upvote_count'],
+            order: [['createdAt', 'DESC']],
+        });
+        res.status(200).json(reports);
+    } catch (error) {
+        console.error("Error fetching public reports:", error);
+        res.status(500).json({ error: 'Failed to fetch public reports.' });
+    }
+});
+
 
 router.post('/', [protect, upload.single('image')], async (req, res) => {
     try {
+        // --- Part 1: Initial Setup & Image Upload ---
         if (!req.file) return res.status(400).json({ error: 'Image file is required.' });
 
-        const b64 = Buffer.from(req.file.buffer).toString("base64");
-        let dataURI = "data:" + req.file.mimetype + ";base64," + b64;
-        const cloudinaryResponse = await cloudinary.uploader.upload(dataURI, { folder: "civic-reports" });
+        const cloudinaryResponse = await cloudinary.uploader.upload(
+            `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`,
+            { folder: "civic-reports" }
+        );
         
         const loggedInUserId = req.user.id;
-        const originalDescription = req.body.description;
+        const { description, longitude, latitude } = req.body;
+        const originalDescription = description;
         let englishDescription = originalDescription;
 
-        // --- 1. DECLARE all variables at the top level ---
-        let category = 'Other';
-        let urgency_score = 1;
-        let departmentId = null;
-        let priority = 'Medium'; // <-- Moved declaration here
+        // --- Part 2: Initialize Variables ---
+        let category = 'Other', 
+            urgency_score = 1, 
+            departmentId = null, 
+            priority = 'Medium', 
+            isAiVerified = false;
 
+        // --- Part 3: AI Processing Block ---
         if (process.env.GEMINI_API_KEY) {
+
             try {
                 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-                const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+                const textModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+                // Use the latest multimodal model which is better for this task
+                const visionModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-                // Step 1: Translate
-                const translationPrompt = `Translate the following text to English: "${originalDescription}"`;
-                const translationResult = await model.generateContent(translationPrompt);
+                // --- Part 1: Translate Text ---
+                const translationPrompt = `Translate the following text to English. Return ONLY the translated text. Text: "${originalDescription}"`;
+                const translationResult = await textModel.generateContent(translationPrompt);
                 englishDescription = translationResult.response.text().trim();
-                console.log(`Translated "${originalDescription}" to "${englishDescription}"`);
 
-                // Step 2: Analyze
+                // --- Part 2: Analyze Translated Text ---
                 const departments = await Department.findAll({ attributes: ['id', 'name'] });
                 const departmentNames = departments.map(d => d.name).join("', '");
-                const analysisPrompt = `
-                    Analyze the following citizen report: "${englishDescription}".
-                    Return a single, clean JSON object with four keys:
-                    1. "category": Choose one from 'Pothole', 'Streetlight', 'Garbage', 'Other'.
-                    2. "urgency_score": A number from 1 (low) to 5 (high).
-                    3. "department": Assign this report to the most relevant department. Choose from: ['${departmentNames}'].
-                    4. "priority": Choose one from 'High', 'Medium', 'Low'.
-                `;
-                const analysisResult = await model.generateContent(analysisPrompt);
-                const responseText = analysisResult.response.text();
-                const cleanedText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-                const aiResponse = JSON.parse(cleanedText);
-
-                // --- 2. ASSIGN values here (do not re-declare with 'const') ---
+                const analysisPrompt = `Analyze the report: "${englishDescription}". Return a JSON object with "category" (from 'Pothole', 'Streetlight', 'Garbage','Water Leakage','Public Safety', 'Other'), "priority" (from 'High', 'Medium', 'Low'), and "department" (from ['${departmentNames}']).`;
+                const analysisResult = await textModel.generateContent(analysisPrompt);
+                const aiResponse = JSON.parse(analysisResult.response.text().replace(/```json/g, '').replace(/```/g, '').trim());
+                
                 category = aiResponse.category || 'Other';
-                urgency_score = aiResponse.urgency_score || 1;
-                priority = aiResponse.priority || 'Medium'; // <-- Assign value, don't re-declare
+                priority = aiResponse.priority || 'Medium';
 
-                // Department matching logic
                 if (aiResponse.department) {
                     const aiDeptName = aiResponse.department.toLowerCase().trim();
-                    const assignedDept = departments.find(d => 
-                        aiDeptName.includes(d.name.toLowerCase()) || 
-                        d.name.toLowerCase().includes(aiDeptName)
-                    );
-                    if (assignedDept) {
-                        departmentId = assignedDept.id;
-                    }
+                    const assignedDept = departments.find(d => aiDeptName.includes(d.name.toLowerCase()) || d.name.toLowerCase().includes(aiDeptName));
+                    if (assignedDept) { departmentId = assignedDept.id; }
                 }
 
-                // Duplicate check logic
+                // 3c: Analyze the Image
+                          console.log("--- DEBUG: Starting Image Analysis ---");
+                const imageParts = [{ inlineData: { data: req.file.buffer.toString("base64"), mimeType: req.file.mimetype } }];
+                
+                // A more restrictive prompt for the vision model
+                const imageAnalysisPrompt = `The user described this image as: "${englishDescription}". Based on the image, does it match the user's description? If it does, return the most relevant category from this list: 'Pothole', 'Streetlight', 'Garbage'. If it does not seem to match or is unclear, return 'Other'. Return only the single-word category.`;
+                
+                const imageResult = await visionModel.generateContent([imageAnalysisPrompt, ...imageParts]);
+                const imageCategory = imageResult.response.text().trim();
+
+                console.log(`DEBUG: Text model category: "${category}"`);
+                console.log(`DEBUG: Vision model category: "${imageCategory}"`);
+
+                // --- Part 4: Verify with a more robust check ---
+                // Check if the vision model's response INCLUDES the text model's category
+                if (imageCategory.toLowerCase().includes(category.toLowerCase())) {
+                    isAiVerified = true;
+                    console.log("DEBUG: Verification SUCCEEDED!");
+                } else {
+                    console.log("DEBUG: Verification FAILED. Categories do not match.");
+                }
+                
+                
+                // 3e: Check for Duplicates
                 const T_HOURS_AGO = new Date(new Date() - (24 * 60 * 60 * 1000));
-                const similarReport = await Report.findOne({ /* ... your duplicate check where clause ... */ });
+                const similarReport = await Report.findOne({
+                    where: {
+                        category: category,
+                        status: { [Op.ne]: 'Resolved' },
+                        createdAt: { [Op.gte]: T_HOURS_AGO },
+                        [Op.and]: sequelize.where(
+                            sequelize.fn('ST_DWithin', sequelize.col('location'), sequelize.fn('ST_SetSRID', sequelize.fn('ST_MakePoint', longitude, latitude), 4326), 50),
+                            true
+                        )
+                    }
+                });
 
                 if (similarReport) {
-                    // ... your duplicate handling logic ...
+                    similarReport.upvote_count += 1;
+                    await similarReport.save();
+                    req.io.emit('report-updated', similarReport.toJSON());
+                    return res.status(200).json({
+                        message: 'This issue appears to be a duplicate. We have upvoted the original report.',
+                        merged: true,
+                        report: similarReport
+                    });
                 }
 
             } catch (aiError) {
-                console.error("AI Translation/Analysis failed:", aiError.message);
+                console.error("AI processing failed:", aiError.message);
             }
         }
         
-        const initialHistory = [{ status: 'Submitted', timestamp: new Date(), notes: 'Report received and auto-processed by AI.' }];
-        const location = { type: 'Point', coordinates: [req.body.longitude, req.body.latitude] };
+        
+
+        // --- Part 4: Create the Report in the Database ---
+        const initialStatus = isAiVerified ? 'Submitted' : 'Pending Review';
+        const initialNotes = isAiVerified 
+            ? 'Report received and auto-verified by AI.' 
+            : 'Report received. AI verification failed, pending manual review.';
+
+        const initialHistory = [{ status: initialStatus, timestamp: new Date(), notes: initialNotes }];
+        const location = { type: 'Point', coordinates: [longitude, latitude] };
 
         const newReport = await Report.create({
             description: englishDescription,
             originalDescription: originalDescription,
             imageUrl: cloudinaryResponse.secure_url,
-            location, // <-- 3. FIX: Removed duplicate 'location' key
+            location,
             UserId: loggedInUserId,
             category,
-            urgency_score,
-            status: 'Submitted',
-            priority: priority, // This will now work correctly
+            priority,
+            isAiVerified,
+            status: initialStatus, // Use the new dynamic status
             statusHistory: initialHistory,
             DepartmentId: departmentId,
         });
@@ -129,7 +180,6 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
         res.status(500).json({ error: 'Failed to create report.' });
     }
 });
-
 
 // PUT /api/reports/:id - Update a report's status or department
 // In server/routes/reportRoutes.js
@@ -227,7 +277,49 @@ router.put('/:id/status', [protect, deptAdminOnly, upload.single('resolvedImage'
 });
 
 // In server/routes/reportRoutes.js, after your other PUT routes
+// In server/routes/reportRoutes.js
 
+// NEW ROUTE: For Municipal Admin to approve or reject a report
+router.put('/:id/review', [protect, municipalAdminOnly], async (req, res) => {
+    try {
+        const { action, reason } = req.body; // action can be 'approve' or 'reject'
+        const report = await Report.findByPk(req.params.id);
+
+        if (!report) return res.status(404).json({ error: 'Report not found.' });
+        if (report.status !== 'Pending Review') {
+            return res.status(400).json({ error: 'This report is not pending review.' });
+        }
+
+        let newStatus = '';
+        let notes = '';
+
+        if (action === 'approve') {
+            // If approved, it enters the normal workflow. It becomes 'Assigned' if a department is set, otherwise 'Submitted'.
+            newStatus = report.DepartmentId ? 'Assigned' : 'Submitted';
+            notes = 'Report approved by admin and entered into workflow.';
+            report.status = newStatus;
+        } else if (action === 'reject') {
+            newStatus = 'Rejected';
+            notes = `Report rejected by admin. Reason: ${reason}`;
+            report.status = newStatus;
+            report.rejectionReason = reason; // Save the rejection reason
+        } else {
+            return res.status(400).json({ error: 'Invalid action.' });
+        }
+
+        const newHistoryEntry = { status: newStatus, timestamp: new Date(), notes };
+        report.statusHistory = [...report.statusHistory, newHistoryEntry];
+        
+        await report.save();
+        
+        req.io.emit('report-updated', report.toJSON());
+        res.status(200).json(report);
+
+    } catch (error) {
+        console.error("Error reviewing report:", error);
+        res.status(500).json({ error: 'Failed to review report.' });
+    }
+});
 // NEW ROUTE 3: For Municipal Admin to set an SLA deadline
 router.put('/:id/sla', [protect, municipalAdminOnly], async (req, res) => {
     try {

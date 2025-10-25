@@ -16,7 +16,7 @@
     "axios": "^1.12.2",
     "bootstrap": "^5.3.8",
     "chart.js": "^4.5.0",
-    "framer-motion": "^12.23.12",
+    "framer-motion": "^12.23.21",
     "leaflet": "^1.9.4",
     "leaflet.heat": "^0.2.0",
     "react": "^19.1.1",
