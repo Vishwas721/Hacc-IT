@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "eas": "eas-cli"
   },
   "dependencies": {
     "@react-navigation/native": "^7.1.17",
