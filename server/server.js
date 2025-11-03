@@ -16,7 +16,14 @@ const userRoutes = require('./routes/userRoutes');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-    cors: { origin: "*", methods: ["GET", "POST", "PUT"] }
+    cors: { 
+        origin: [
+            'https://nagarikone.vercel.app',
+            'https://nagarikone.onrender.com',
+            'exp://' // Allow Expo development client
+        ], 
+        methods: ["GET", "POST", "PUT"] 
+    }
 });
 
 // Make io instance available
@@ -25,7 +32,16 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(cors());
+// Configure CORS for Express
+app.use(cors({
+    origin: [
+        'https://nagarikone.vercel.app',
+        'https://nagarikone.onrender.com',
+        'exp://' // Allow Expo development client
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 const PORT = process.env.PORT || 5000;
 
