@@ -14,18 +14,14 @@ console.log('-------------------------------');
 
 // Check if we have a DATABASE_URL (production/Render) or individual credentials (local)
 if (process.env.DATABASE_URL) {
-    // Production/Render environment
-    console.log('--- Using DATABASE_URL for Render connection. ---');
+    console.log('--- Using DATABASE_URL for Render connection (internal). ---');
     sequelize = new Sequelize(process.env.DATABASE_URL, {
         dialect: 'postgres',
         protocol: 'postgres',
-        dialectOptions: {
-            ssl: {
-                require: true,
-                rejectUnauthorized: false
-            }
-        }
+        logging: false, // optional
+        dialectOptions: {} // ❌ no SSL for internal network
     });
+
 } else {
     // Local environment
     console.log('--- No DATABASE_URL found. Using local config. ---');
