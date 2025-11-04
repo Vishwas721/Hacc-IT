@@ -11,15 +11,9 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: 'postgres',
   protocol: 'postgres',
   logging: false,
-  dialectOptions: isRender
-    ? {} // internal -> no SSL
-    : {   // local / external -> need SSL
-        ssl: {
-          require: true,
-          rejectUnauthorized: false,
-        },
-      },
+  dialectOptions: {} // no SSL for internal connection
 });
+
 
 // Pass both sequelize instance and DataTypes to model factory functions
 const Report = ReportModel(sequelize, DataTypes);
