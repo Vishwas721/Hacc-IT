@@ -1,5 +1,5 @@
 // server/db.js
-const { Sequelize } = require('sequelize');
+const { Sequelize, DataTypes } = require('sequelize');
 const ReportModel = require('./models/Report');
 const UserModel = require('./models/User');
 
@@ -21,8 +21,9 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
       },
 });
 
-const Report = ReportModel(sequelize);
-const User = UserModel(sequelize);
+// Pass both sequelize instance and DataTypes to model factory functions
+const Report = ReportModel(sequelize, DataTypes);
+const User = UserModel(sequelize, DataTypes);
 
 User.hasMany(Report);
 Report.belongsTo(User);
