@@ -11,6 +11,7 @@ const authRoutes = require('./routes/authRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const departmentRoutes = require('./routes/departmentRoutes');
 const userRoutes = require('./routes/userRoutes');
+const healthRoutes = require('./routes/healthRoutes');
 
 // --- SETUP ---
 const app = express();
@@ -61,6 +62,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/users', userRoutes);
+app.use('/health', healthRoutes);
 
 // --- SOCKET.IO CONNECTION ---
 io.on('connection', (socket) => {
