@@ -4,9 +4,18 @@ const UserModel = require('./models/User');
 
 let sequelize;
 
+// --- ADD THESE LINES TO DEBUG ---
+console.log('--- STARTING DB CONNECTION ---');
+console.log('DATABASE_URL variable:', process.env.DATABASE_URL);
+// We also log a local var to see if .env file is being read at all
+console.log('Local DB_NAME variable:', process.env.DB_NAME);
+console.log('-------------------------------');
+// --- END DEBUG LINES ---
+
 // Check if we have a DATABASE_URL (production/Render) or individual credentials (local)
 if (process.env.DATABASE_URL) {
     // Production/Render environment
+    console.log('--- Using DATABASE_URL for Render connection. ---');
     sequelize = new Sequelize(process.env.DATABASE_URL, {
         dialect: 'postgres',
         protocol: 'postgres',
@@ -19,6 +28,7 @@ if (process.env.DATABASE_URL) {
     });
 } else {
     // Local environment
+    console.log('--- No DATABASE_URL found. Using local config. ---');
     sequelize = new Sequelize(
         process.env.DB_NAME,
         process.env.DB_USER,
@@ -44,6 +54,7 @@ const connectAndSync = async () => {
         await sequelize.sync({ alter: true });
         console.log('✅ Models synchronized.');
     } catch (error) {
+        // Log the *full* error to see the details
         console.error('❌ DB connection/sync error:', error);
     }
 };
