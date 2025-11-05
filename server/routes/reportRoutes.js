@@ -44,6 +44,8 @@ router.get('/public', async (req, res) => {
 
 // In server/routes/reportRoutes.js
 
+// In server/routes/reportRoutes.js
+
 router.post('/', [protect, upload.single('image')], async (req, res) => {
     try {
         // --- Part 1: Initial Setup & Image Upload ---
@@ -60,7 +62,7 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
         const originalDescription = description;
         let englishDescription = originalDescription;
 
-        // --- Part 2: Initialize Variables (Added urgency_score) ---
+        // --- Part 2: Initialize Variables ---
         let category = 'Other', 
             urgency_score = 1, 
             departmentId = null, 
@@ -75,10 +77,10 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
             try {
                 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
                 
-                // --- FIX 1: Using the standard stable model names ---
-                const textModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
+                // --- THE FIX: Using the correct, stable model names ---
+                const textModel = genAI.getGenerativeModel({ model: 'gemini-1.0-pro' });
                 const visionModel = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
-                // --- END FIX 1 ---
+                // --- END THE FIX ---
 
                 // --- 3a: Translate Text ---
                 const translationPrompt = `Translate the following text to English. Return ONLY the translated text. Text: "${originalDescription}"`;
@@ -108,11 +110,9 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
                 const aiResponse = JSON.parse(jsonMatch[0]);
                 console.log('AI TEXT ANALYSIS (PARSED):', aiResponse);
                 
-                // --- FIX 2: Assigning all variables from AI response ---
                 category = aiResponse.category || 'Other';
                 priority = aiResponse.priority || 'Medium';
                 urgency_score = aiResponse.urgency_score || 1; 
-                // --- END FIX 2 ---
 
                 if (aiResponse.department) {
                     const aiDeptName = aiResponse.department.toLowerCase().trim();
@@ -171,12 +171,11 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
                 console.log("--- DUPLICATE CHECK: No duplicate found. ---");
 
             } catch (aiError) {
-                console.error("--- AI PROCESSING FAILED ---:", aiError.message);
+                console.error("--- AI PROCESSING FAILED ---:", aiError);
             }
         }
         
         // --- Part 4: Create the Report in the Database ---
- // --- Part 4: Create the Report in the Database ---
         console.log("--- 4. CREATING REPORT IN DATABASE ---");
         const initialStatus = isAiVerified ? 'Submitted' : 'Pending Review';
         const initialNotes = isAiVerified 
@@ -193,7 +192,7 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
             location,
             UserId: loggedInUserId,
             category,
-            urgency_score, // <-- FIXED: Added this back in
+            urgency_score,
             priority,
             isAiVerified,
             status: initialStatus,
