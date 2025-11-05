@@ -5,13 +5,31 @@ const UserModel = require('./models/User');
 
 console.log('🔍 DATABASE_URL (runtime):', process.env.DATABASE_URL || 'undefined');
 
-const isRender = process.env.RENDER === 'true' || process.env.RENDER_INTERNAL_HOSTNAME;
+// Decide SSL based on the DATABASE_URL host (internal vs external)
+const dbUrl = process.env.DATABASE_URL;
+let dialectOptions = {};
+try {
+  const parsed = new URL(dbUrl);
+  const host = parsed.hostname || '';
+  const isInternalHost = !host.includes('render.com');
+  if (!isInternalHost) {
+    dialectOptions = {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false,
+      },
+    };
+  }
+  console.log('🔗 DB host:', host, '| internal:', isInternalHost, '| ssl:', Boolean(dialectOptions.ssl));
+} catch (e) {
+  console.log('ℹ️ Could not parse DATABASE_URL; proceeding with no explicit SSL options');
+}
 
-const sequelize = new Sequelize(process.env.DATABASE_URL, {
+const sequelize = new Sequelize(dbUrl, {
   dialect: 'postgres',
   protocol: 'postgres',
   logging: false,
-  dialectOptions: {} // no SSL for internal connection
+  dialectOptions,
 });
 
 
