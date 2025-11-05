@@ -60,7 +60,7 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
         const originalDescription = description;
         let englishDescription = originalDescription;
 
-        // --- Part 2: Initialize Variables ---
+        // --- Part 2: Initialize Variables (Added urgency_score) ---
         let category = 'Other', 
             urgency_score = 1, 
             departmentId = null, 
@@ -70,12 +70,15 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
         // --- Part 3: AI Processing Block ---
         if (process.env.GEMINI_API_KEY) {
             console.log("--- 2. AI PROCESSING BLOCK START ---");
-            console.log("Gemini API Key loaded:", !!process.env.GEMINI_API_KEY); // Checks if key exists
+            console.log("Gemini API Key loaded:", !!process.env.GEMINI_API_KEY);
 
             try {
                 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-                const textModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-                const visionModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+                
+                // --- FIX 1: Using the standard stable model names ---
+                const textModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
+                const visionModel = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+                // --- END FIX 1 ---
 
                 // --- 3a: Translate Text ---
                 const translationPrompt = `Translate the following text to English. Return ONLY the translated text. Text: "${originalDescription}"`;
@@ -87,11 +90,11 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
                 const departments = await Department.findAll({ attributes: ['id', 'name'] });
                 const departmentNames = departments.map(d => d.name).join("', '");
                 
-                // YOUR NEW CATEGORIES ARE ADDED HERE
                 const analysisPrompt = `
                     Analyze the report: "${englishDescription}". 
                     Return a single, minified JSON object with "category" (from 'Pothole', 'Streetlight', 'Garbage', 'Water Leakage', 'Public Safety', 'Other'), 
                     "priority" (from 'High', 'Medium', 'Low'), 
+                    "urgency_score" (a number from 1 to 5),
                     and "department" (from ['${departmentNames}']).
                     Return ONLY the JSON object.`;
                 
@@ -99,16 +102,17 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
                 const rawAnalysisText = analysisResult.response.text().trim();
                 console.log('AI TEXT ANALYSIS (RAW):', rawAnalysisText);
                 
-                // Safer JSON parsing
                 const jsonMatch = rawAnalysisText.match(/{.*}/s);
                 if (!jsonMatch) throw new Error('AI analysis did not return valid JSON.');
                 
                 const aiResponse = JSON.parse(jsonMatch[0]);
                 console.log('AI TEXT ANALYSIS (PARSED):', aiResponse);
                 
+                // --- FIX 2: Assigning all variables from AI response ---
                 category = aiResponse.category || 'Other';
                 priority = aiResponse.priority || 'Medium';
-                urgency_score = aiResponse.urgency_score || 1; // Re-adding this from your prompt
+                urgency_score = aiResponse.urgency_score || 1; 
+                // --- END FIX 2 ---
 
                 if (aiResponse.department) {
                     const aiDeptName = aiResponse.department.toLowerCase().trim();
@@ -120,7 +124,6 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
                 console.log("--- 3c. AI IMAGE ANALYSIS START ---");
                 const imageParts = [{ inlineData: { data: req.file.buffer.toString("base64"), mimeType: req.file.mimetype } }];
                 
-                // UPDATED PROMPT: Added your new categories to the vision prompt for correct matching
                 const imageAnalysisPrompt = `The user described this image as: "${englishDescription}". 
                     Based on the image, does it match? If it does, return the most relevant category from this list: 
                     'Pothole', 'Streetlight', 'Garbage', 'Water Leakage', 'Public Safety'. 
@@ -173,6 +176,7 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
         }
         
         // --- Part 4: Create the Report in the Database ---
+ // --- Part 4: Create the Report in the Database ---
         console.log("--- 4. CREATING REPORT IN DATABASE ---");
         const initialStatus = isAiVerified ? 'Submitted' : 'Pending Review';
         const initialNotes = isAiVerified 
