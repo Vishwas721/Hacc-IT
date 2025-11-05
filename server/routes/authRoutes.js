@@ -2,46 +2,71 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { User } = require('../models'); // Adjusted path to models
-const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
+const { User } = require('../models');
+// We need to import our middleware for the secure route
+const { protect, municipalAdminOnly } = require('../middleware/authMiddleware'); 
 
-// --- Register a new user ---
-// POST /api/auth/register
+const router = express.Router();
+
+// --- SECURE: Get user profile ---
 router.get('/profile', protect, (req, res) => {
-    // The 'protect' middleware runs first. If the token is valid,
-    // it attaches the user data to req.user.
     res.json(req.user);
 });
 
-// in server/routes/authRoutes.js
-
-router.post('/register', async (req, res) => {
+// --- NEW (PUBLIC): Citizen Registration (for Mobile App) ---
+// This route is public but HARD-CODES the role to 'citizen' for security.
+router.post('/register/citizen', async (req, res) => {
     try {
-        // Now accepts departmentId from the request body
-        const { username, password, role, departmentId } = req.body;
-
+        const { username, password } = req.body;
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password are required.' });
+        }
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const newUser = await User.create({
             username,
             password: hashedPassword,
-            role: role || 'staff',
-            DepartmentId: departmentId || null, // Assign department if provided
+            role: 'citizen', // Role is hard-coded
         });
 
-        res.status(201).json({ message: 'User created successfully', userId: newUser.id });
+        res.status(201).json({ message: 'Citizen account created', userId: newUser.id });
     } catch (error) {
-        // Provide a more specific error for unique constraint violation
         if (error.name === 'SequelizeUniqueConstraintError') {
-            return res.status(400).json({ error: 'Error registering new user.', details: 'Username already exists.' });
+            return res.status(400).json({ error: 'Username already exists.' });
         }
-        res.status(500).json({ error: 'Error registering new user.', details: error.message });
+        res.status(500).json({ error: 'Error registering new citizen.', details: error.message });
     }
 });
 
-// --- Login a user ---
-// POST /api/auth/login
+// --- NEW (SECURE): Admin/Staff Registration (for Admin Dashboard) ---
+// This route is protected and can only be accessed by a logged-in Municipal Admin.
+router.post('/register/admin', [protect, municipalAdminOnly], async (req, res) => {
+    try {
+        const { username, password, role, departmentId } = req.body;
+
+        // Server-side check to prevent creating invalid roles
+        if (!['dept-admin', 'staff'].includes(role)) {
+            return res.status(400).json({ error: 'Invalid role specified. Can only create "dept-admin" or "staff".' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = await User.create({
+            username,
+            password: hashedPassword,
+            role: role,
+            DepartmentId: departmentId || null,
+        });
+
+        res.status(201).json({ message: 'User account created successfully', userId: newUser.id });
+    } catch (error) {
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.status(400).json({ error: 'Username already exists.' });
+        }
+        res.status(500).json({ error: 'Error creating new user.', details: error.message });
+    }
+});
+
+// --- Your existing Login route (no changes needed) ---
 router.post('/login', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -51,20 +76,18 @@ router.post('/login', async (req, res) => {
             return res.status(404).json({ error: 'User not found.' });
         }
 
-        // Compare submitted password with the hashed password in the DB
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(401).json({ error: 'Invalid credentials.' });
         }
 
-        // Passwords match, create a JWT
         const payload = {
             id: user.id,
             username: user.username,
             role: user.role,
         };
 
-        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' }); // Token expires in 1 day
+        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
 
         res.json({
             message: 'Logged in successfully',

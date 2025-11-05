@@ -79,7 +79,7 @@ const Users = () => {
                 });
                 toast.success(`User ${selectedUser.username} updated!`);
             } else {
-                await api.post('/auth/register', {
+await api.post('/auth/register/admin', {
                     username: selectedUser.username,
                     password: selectedUser.password,
                     role: selectedUser.role,
