@@ -42,11 +42,14 @@ router.get('/public', async (req, res) => {
 });
 
 
+// In server/routes/reportRoutes.js
+
 router.post('/', [protect, upload.single('image')], async (req, res) => {
     try {
         // --- Part 1: Initial Setup & Image Upload ---
         if (!req.file) return res.status(400).json({ error: 'Image file is required.' });
 
+        console.log("--- 1. UPLOADING TO CLOUDINARY ---");
         const cloudinaryResponse = await cloudinary.uploader.upload(
             `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`,
             { folder: "civic-reports" }
@@ -66,27 +69,46 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
 
         // --- Part 3: AI Processing Block ---
         if (process.env.GEMINI_API_KEY) {
+            console.log("--- 2. AI PROCESSING BLOCK START ---");
+            console.log("Gemini API Key loaded:", !!process.env.GEMINI_API_KEY); // Checks if key exists
 
             try {
                 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
                 const textModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-                // Use the latest multimodal model which is better for this task
                 const visionModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-                // --- Part 1: Translate Text ---
+                // --- 3a: Translate Text ---
                 const translationPrompt = `Translate the following text to English. Return ONLY the translated text. Text: "${originalDescription}"`;
                 const translationResult = await textModel.generateContent(translationPrompt);
                 englishDescription = translationResult.response.text().trim();
+                console.log(`AI TRANSLATION: "${originalDescription}" -> "${englishDescription}"`);
 
-                // --- Part 2: Analyze Translated Text ---
+                // --- 3b: Analyze Translated Text ---
                 const departments = await Department.findAll({ attributes: ['id', 'name'] });
                 const departmentNames = departments.map(d => d.name).join("', '");
-                const analysisPrompt = `Analyze the report: "${englishDescription}". Return a JSON object with "category" (from 'Pothole', 'Streetlight', 'Garbage','Water Leakage','Public Safety', 'Other'), "priority" (from 'High', 'Medium', 'Low'), and "department" (from ['${departmentNames}']).`;
+                
+                // YOUR NEW CATEGORIES ARE ADDED HERE
+                const analysisPrompt = `
+                    Analyze the report: "${englishDescription}". 
+                    Return a single, minified JSON object with "category" (from 'Pothole', 'Streetlight', 'Garbage', 'Water Leakage', 'Public Safety', 'Other'), 
+                    "priority" (from 'High', 'Medium', 'Low'), 
+                    and "department" (from ['${departmentNames}']).
+                    Return ONLY the JSON object.`;
+                
                 const analysisResult = await textModel.generateContent(analysisPrompt);
-                const aiResponse = JSON.parse(analysisResult.response.text().replace(/```json/g, '').replace(/```/g, '').trim());
+                const rawAnalysisText = analysisResult.response.text().trim();
+                console.log('AI TEXT ANALYSIS (RAW):', rawAnalysisText);
+                
+                // Safer JSON parsing
+                const jsonMatch = rawAnalysisText.match(/{.*}/s);
+                if (!jsonMatch) throw new Error('AI analysis did not return valid JSON.');
+                
+                const aiResponse = JSON.parse(jsonMatch[0]);
+                console.log('AI TEXT ANALYSIS (PARSED):', aiResponse);
                 
                 category = aiResponse.category || 'Other';
                 priority = aiResponse.priority || 'Medium';
+                urgency_score = aiResponse.urgency_score || 1; // Re-adding this from your prompt
 
                 if (aiResponse.department) {
                     const aiDeptName = aiResponse.department.toLowerCase().trim();
@@ -94,30 +116,31 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
                     if (assignedDept) { departmentId = assignedDept.id; }
                 }
 
-                // 3c: Analyze the Image
-                          console.log("--- DEBUG: Starting Image Analysis ---");
+                // --- 3c: Analyze the Image ---
+                console.log("--- 3c. AI IMAGE ANALYSIS START ---");
                 const imageParts = [{ inlineData: { data: req.file.buffer.toString("base64"), mimeType: req.file.mimetype } }];
                 
-                // A more restrictive prompt for the vision model
-                const imageAnalysisPrompt = `The user described this image as: "${englishDescription}". Based on the image, does it match the user's description? If it does, return the most relevant category from this list: 'Pothole', 'Streetlight', 'Garbage'. If it does not seem to match or is unclear, return 'Other'. Return only the single-word category.`;
+                // UPDATED PROMPT: Added your new categories to the vision prompt for correct matching
+                const imageAnalysisPrompt = `The user described this image as: "${englishDescription}". 
+                    Based on the image, does it match? If it does, return the most relevant category from this list: 
+                    'Pothole', 'Streetlight', 'Garbage', 'Water Leakage', 'Public Safety'. 
+                    If it does not match or is unclear, return 'Other'. 
+                    Return only the single-word category.`;
                 
                 const imageResult = await visionModel.generateContent([imageAnalysisPrompt, ...imageParts]);
                 const imageCategory = imageResult.response.text().trim();
 
-                console.log(`DEBUG: Text model category: "${category}"`);
-                console.log(`DEBUG: Vision model category: "${imageCategory}"`);
-
-                // --- Part 4: Verify with a more robust check ---
-                // Check if the vision model's response INCLUDES the text model's category
+                // --- 3d: Verify and Log ---
+                console.log(`AI VERIFICATION: Text category: "${category}" vs Image category: "${imageCategory}"`);
                 if (imageCategory.toLowerCase().includes(category.toLowerCase())) {
                     isAiVerified = true;
-                    console.log("DEBUG: Verification SUCCEEDED!");
+                    console.log("AI VERIFICATION: SUCCEEDED!");
                 } else {
-                    console.log("DEBUG: Verification FAILED. Categories do not match.");
+                    console.log("AI VERIFICATION: FAILED. Categories do not match.");
                 }
                 
-                
-                // 3e: Check for Duplicates
+                // --- 3e: Check for Duplicates ---
+                console.log("--- 3e. DUPLICATE CHECK START ---");
                 const T_HOURS_AGO = new Date(new Date() - (24 * 60 * 60 * 1000));
                 const similarReport = await Report.findOne({
                     where: {
@@ -132,6 +155,7 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
                 });
 
                 if (similarReport) {
+                    console.log(`--- DUPLICATE FOUND: Merging with report #${similarReport.id} ---`);
                     similarReport.upvote_count += 1;
                     await similarReport.save();
                     req.io.emit('report-updated', similarReport.toJSON());
@@ -141,15 +165,15 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
                         report: similarReport
                     });
                 }
+                console.log("--- DUPLICATE CHECK: No duplicate found. ---");
 
             } catch (aiError) {
-                console.error("AI processing failed:", aiError.message);
+                console.error("--- AI PROCESSING FAILED ---:", aiError.message);
             }
         }
         
-        
-
         // --- Part 4: Create the Report in the Database ---
+        console.log("--- 4. CREATING REPORT IN DATABASE ---");
         const initialStatus = isAiVerified ? 'Submitted' : 'Pending Review';
         const initialNotes = isAiVerified 
             ? 'Report received and auto-verified by AI.' 
@@ -165,18 +189,20 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
             location,
             UserId: loggedInUserId,
             category,
+            urgency_score, // <-- FIXED: Added this back in
             priority,
             isAiVerified,
-            status: initialStatus, // Use the new dynamic status
+            status: initialStatus,
             statusHistory: initialHistory,
             DepartmentId: departmentId,
         });
         
+        console.log(`--- 5. REPORT CREATED: #${newReport.id} ---`);
         req.io.emit('report-updated', newReport.toJSON());
         res.status(201).json(newReport);
 
     } catch (error) {
-        console.error('Error creating report:', error);
+        console.error('--- !! FATAL ERROR CREATING REPORT !! ---:', error);
         res.status(500).json({ error: 'Failed to create report.' });
     }
 });
