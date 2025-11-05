@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create an Axios instance
 const api = axios.create({
-  baseURL: 'https://nagarikone.onrender.com/api', // Production backend URL
+  baseURL: 'https://hacc-it.onrender.com/api', // Production backend URL (Render)
   headers: {
     'Content-Type': 'application/json',
   },

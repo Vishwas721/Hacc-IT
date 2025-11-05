@@ -20,7 +20,7 @@ const io = new Server(server, {
     cors: { 
         origin: [
             'https://nagarikone.vercel.app',
-            'https://nagarikone.onrender.com',
+            'https://hacc-it.onrender.com',
             'exp://' // Allow Expo development client
         ], 
         methods: ["GET", "POST", "PUT"] 
@@ -37,7 +37,7 @@ app.use((req, res, next) => {
 app.use(cors({
     origin: [
         'https://nagarikone.vercel.app',
-        'https://nagarikone.onrender.com',
+        'https://hacc-it.onrender.com',
         'exp://' // Allow Expo development client
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
