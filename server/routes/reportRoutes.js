@@ -46,6 +46,8 @@ router.get('/public', async (req, res) => {
 
 // In server/routes/reportRoutes.js
 
+// In server/routes/reportRoutes.js
+
 router.post('/', [protect, upload.single('image')], async (req, res) => {
     try {
         // --- Part 1: Initial Setup & Image Upload ---
@@ -77,9 +79,9 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
             try {
                 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
                 
-                // --- THE FIX: Using the correct, stable model names ---
-                const textModel = genAI.getGenerativeModel({ model: 'gemini-1.0-pro' });
-                const visionModel = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+                // --- THE FIX: Using gemini-1.5-flash for both text and vision ---
+                const textModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+                const visionModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
                 // --- END THE FIX ---
 
                 // --- 3a: Translate Text ---
@@ -209,7 +211,6 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
         res.status(500).json({ error: 'Failed to create report.' });
     }
 });
-
 // PUT /api/reports/:id - Update a report's status or department
 // In server/routes/reportRoutes.js
 
