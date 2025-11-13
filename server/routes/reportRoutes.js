@@ -71,6 +71,10 @@ router.post('/', [protect, upload.single('image')], async (req, res) => {
             priority = 'Medium', 
             isAiVerified = false;
 
+        // --- DEBUG: Check if GEMINI_API_KEY exists ---
+        console.log("🔑 GEMINI_API_KEY exists:", !!process.env.GEMINI_API_KEY);
+        console.log("🔑 GEMINI_API_KEY length:", process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0);
+        
         // --- Part 3: AI Processing Block ---
         if (process.env.GEMINI_API_KEY) {
             console.log("--- 2. AI PROCESSING BLOCK START ---");
